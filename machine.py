@@ -16,69 +16,7 @@ handWidth = 8
 rightHandSize = 0
 leftHandSize = 0
 
-def travel_time(distance, accel, velocity):
-    mAccelDistance = (velocity ** 2) / (2 * accel)
-    if(2 * mAccelDistance > distance):
-        rDistance = 0
-        accelDistance = (distance / 2)
-    else:
-        accelDistance = mAccelDistance
-        rDistance = distance - accelDistance
-        
-    accelTime = 2 * math.sqrt(accelDistance / (accel))
-
-    linearTime = rDistance / velocity
-
-    totalTime = accelTime + linearTime
-
-    return totalTime * 1000
-
-def handLocation(keyWidth, distance, accel, velocity):
-    mAccelDistance = (velocity ** 2) / (2 * accel)
-
-    if((mAccelDistance * 2) > distance):
-        rDistance = 0
-        accelDistance = distance / 2
-        decelDistance = distance / 2
-    else:
-        accelDistance = mAccelDistance
-        decelDistance = mAccelDistance
-        rDistance = distance - (decelDistance + accelDistance)
-
-    displayPoints = []
-
-    accelPoint = 1
-    linearPoint = 1
-
-    carryOverTime = 0
-    carryOverDistance = 0
-
-    while(accelDistance > keyWidth):
-        displayPoints.append(math.sqrt(2*keyWidth*accelPoint / (accel)))
-        accelPoint += 1
-        accelDistance -= keyWidth
-    carryOverDistance = accelDistance
-    carryOverTime = math.sqrt(2*(keyWidth*accelPoint + carryOverDistance) / (accel))
-
-    if((rDistance + carryOverDistance) > keyWidth):
-        linearDistance = keyWidth - carryOverDistance
-        linearTime = linearDistance / velocity
-        displayPoints.append(carryOverTime + linearTime)
-        rDistance -= carryOverDistance
-        carryOverTime = displayPoints[-1]
-
-    while(rDistance > keyWidth):
-        linearDistance = keyWidth * linearPoint
-        linearTime = linearDistance / velocity
-        displayPoints.append(carryOverTime + linearTime)
-        linearPoint += 1
-    
-    carryOverDistance = rDistance
-    carryOverTime = ()
-
-    
-    
-
+keyWidth = 23.2
 
 def pianoSetup():
 

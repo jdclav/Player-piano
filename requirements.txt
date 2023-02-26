@@ -1,0 +1,12 @@
+apio==0.8.1
+certifi==2022.12.7
+charset-normalizer==2.0.12
+click==7.1.2
+colorama==0.4.4
+idna==3.4
+PyJWT==1.7.1
+pyserial==3.5
+requests==2.27.1
+SCons==4.2.0
+semantic-version==2.9.0
+urllib3==1.26.14
