@@ -14,41 +14,56 @@ def timeDistanceFunction(distance, acceleration, maxVelocity, totalDistance):
     timeToVelocity = (maxVelocity / acceleration)
     distanceToVelocity = (0.5 * acceleration * (timeToVelocity ** 2))
 
+    timePoint = 0
+
     # totalDistance is the total distance traveled for this calculation so any distance greater than
     # that would be out of scope.
     if((distance > totalDistance) or (distance < 0)):
-        return 0
+        return timePoint
 
     if((2 * distanceToVelocity) > totalDistance):
         halfDistance = totalDistance / 2
         timeOffset = math.sqrt((2 * halfDistance) / acceleration) 
         if(distance < halfDistance):
-            return 1000 * timeDistanceAcceleration(distance, acceleration)
+            timePoint = timeDistanceAcceleration(distance, acceleration)
         else:
-            return 1000 * timeDistanceDeceleration(distance, maxVelocity, acceleration, halfDistance, 
+            timePoint = timeDistanceDeceleration(distance, maxVelocity, acceleration, halfDistance, 
                                             timeOffset)
     else:
         distanceToDeceleration = totalDistance - distanceToVelocity
         
         if(distance < distanceToVelocity):
-            return 1000 * timeDistanceAcceleration(distance, acceleration)
+            timePoint = timeDistanceAcceleration(distance, acceleration)
         elif(distance < distanceToDeceleration):
-            return 1000 * timeDistanceVelocity(distance, maxVelocity, distanceToVelocity, 
+            timePoint = timeDistanceVelocity(distance, maxVelocity, distanceToVelocity, 
                                                timeToVelocity)
         else:
             timeToDeceleration = timeDistanceVelocity(distanceToDeceleration, maxVelocity, 
                                                   distanceToVelocity, timeToVelocity)
             
-            return 1000 * timeDistanceDeceleration(distance, maxVelocity, acceleration, 
+            timePoint = timeDistanceDeceleration(distance, maxVelocity, acceleration, 
                                             distanceToDeceleration, timeToDeceleration)
+
+    return 1000 * (timePoint)    
+    
+def timeDistanceList(distanceInterval, acceleration, maxVelocity, totalDistance): 
+    adjustedAcceleration = (acceleration / distanceInterval)
+    adjustedVelocity = (maxVelocity / distanceInterval)
+    adjustedTotalDistance = (totalDistance / distanceInterval)
+
+    positions = []
+    
+    for i in range(int(adjustedTotalDistance) + 1):
+        positions.append([(distanceInterval * i), 
+                          timeDistanceFunction(i, adjustedAcceleration, adjustedVelocity, 
+                                               adjustedTotalDistance)])
+    
+    return positions
         
 
-totalDistance = 200
-acceleration = 200
-maxVelocity = 100
+totalDistance = 232
+acceleration = (2000)
+maxVelocity = (1000)
 
-positions = []
-
-for i in range(totalDistance + 1):
-    positions.append([i, timeDistanceFunction(i, acceleration, maxVelocity, totalDistance)])
-print(positions)
+frameUpdates = timeDistanceList(23.2, acceleration, maxVelocity, totalDistance) 
+print(frameUpdates)
