@@ -7,11 +7,11 @@ class Note:
         self.frequency = frequency
         self.duration = duration
 
-        duration_seconds = int(duration / 1000)
+        samples_per_ms = int(sample_rate / 1000)
 
-        samples = np.linspace(0, duration_seconds, duration_seconds * sample_rate, False)
+        samples = np.linspace(0, duration, duration * samples_per_ms, False)
 
-        self.waveform = np.sin(frequency * samples * 2 * np.pi)
+        self.waveform = np.sin(frequency * (samples  / 1000) * 2 * np.pi)
 
 
 if __name__ == "__main__":
@@ -26,18 +26,18 @@ if __name__ == "__main__":
     # seconds*sample_rate steps, 
     # ranging between 0 and seconds
 
-    first_note = Note(first_freq, 1000, smpl_rate)
-    next_note = Note(next_freq, 1000, smpl_rate)
+    first_note = Note(first_freq, 100, smpl_rate)
+    next_note = Note(next_freq, 100, smpl_rate)
 
     
     # merging the notes
-    #tape = np.hstack((first_note.waveform,next_note.waveform))
-    tape = np.add(first_note.waveform,next_note.waveform)
+    tape = np.hstack((first_note.waveform,next_note.waveform))
+    #tape = np.add(first_note.waveform,next_note.waveform)
     # normalizing to 16-bit range 
     # after concatenating the note notes
     tape *= 32767 / np.max(np.abs(tape))
 
-    tape *= 0.2
+    #tape *= 0.2 
     
     # Converting to 16-bit data
     tape = tape.astype(np.int16)
