@@ -1,8 +1,10 @@
 import mido
+import time
+import audioTest
+import numpy as np
 
-import musicalbeeps
+SAMPLE_RATE = 48000
 
-player = musicalbeeps.Player()
 
 mid = mido.MidiFile("underground.mid")
 
@@ -16,6 +18,10 @@ tempo = None
 
 usPerTick = None
 
+notes = []
+
+pending = []
+
 for msg in metaMessages:
     if msg.type == "time_signature":
         timeSignature = msg
@@ -23,16 +29,58 @@ for msg in metaMessages:
     if msg.type == "set_tempo":
         tempo = msg.tempo
 
-""" for msg in noteMessages:
-
-    if msg.type=="note_on":
-        print(msg)
- """
 usPerTick = tempo / mid.ticks_per_beat
 
-player.play_note("B", 0.2)
+current_note = 0
 
-""" for msg in mid.play():
-    if msg.type == "note_on":
-        print(msg.note)
- """
+current_time = 0
+
+previous_time = 0
+
+notes = []
+
+for msg in noteMessages:
+
+    if msg.type=="note_on":
+
+        #print(msg)
+        
+        """        
+        print("Note: " + str(msg.note))
+        print("Time: " + str(msg.time))
+        print("Current Time: " + str(current_time))
+        """
+
+        current_time += msg.time
+
+        
+
+        elif(msg.note in pending):
+            pending.remove(msg.note)
+            current_note = msg.note
+        else:
+            pending.append(msg.note)
+            continue
+
+
+
+        
+
+        
+        
+        
+
+
+
+        
+"""
+current_duration = int(msg.time * usPerTick / 1000.0)
+
+samples = np.linspace(0, current_duration, current_duration * int(SAMPLE_RATE / 1000), False)
+
+"""
+
+
+
+
+
