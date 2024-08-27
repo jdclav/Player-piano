@@ -1,7 +1,9 @@
 import mido
-import time
+#import time
 import audioTest
-import numpy as np
+#import numpy as np
+import simpleaudio as sa
+
 
 SAMPLE_RATE = 48000
 
@@ -14,13 +16,6 @@ noteMessages = mid.tracks[1].copy()
 
 timeSignature = None
 
-tempo = None
-
-usPerTick = None
-
-notes = []
-
-pending = []
 
 for msg in metaMessages:
     if msg.type == "time_signature":
@@ -29,21 +24,23 @@ for msg in metaMessages:
     if msg.type == "set_tempo":
         tempo = msg.tempo
 
-usPerTick = tempo / mid.ticks_per_beat
-
-current_note = 0
-
-current_time = 0
+us_per_tick = tempo / mid.ticks_per_beat
 
 previous_time = 0
 
-notes = []
+current_time = 0
+
+notes = audioTest.NoteList()
 
 for msg in noteMessages:
 
     if msg.type=="note_on":
 
-        #print(msg)
+        current_time += msg.time
+
+        notes.find_note(msg.note, current_time, previous_time, msg.velocity)
+
+        previous_time = current_time
         
         """        
         print("Note: " + str(msg.note))
@@ -51,7 +48,20 @@ for msg in noteMessages:
         print("Current Time: " + str(current_time))
         """
 
-        current_time += msg.time
+
+    
+notes.full_waveform(current_time, us_per_tick, SAMPLE_RATE)
+
+    # Start audio
+play = sa.play_buffer(notes.waveform, 1, 2, SAMPLE_RATE)
+
+# Wait for audio playback to finish before exiting
+play.wait_done()
+play.stop()
+
+
+
+"""        current_time += msg.time
 
         
 
@@ -61,16 +71,7 @@ for msg in noteMessages:
         else:
             pending.append(msg.note)
             continue
-
-
-
-        
-
-        
-        
-        
-
-
+"""
 
         
 """
@@ -79,8 +80,3 @@ current_duration = int(msg.time * usPerTick / 1000.0)
 samples = np.linspace(0, current_duration, current_duration * int(SAMPLE_RATE / 1000), False)
 
 """
-
-
-
-
-
