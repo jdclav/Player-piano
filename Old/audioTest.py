@@ -36,10 +36,9 @@ class Note:
 
     def note_waveform(self, us_per_tick: float, sample_rate: int) -> None:
         frequency = midi_to_freq(self.midi_note)
-        samples_per_ms = int(sample_rate / 1000)
-        duration_in_ms = int(self.duration * us_per_tick / 1000)
+        duration_in_s = (self.duration * us_per_tick / 1000000.0)
 
-        samples = np.linspace(0, duration_in_ms, duration_in_ms * samples_per_ms, False)
+        samples = np.linspace(0, duration_in_s, int(duration_in_s * sample_rate), False)
 
         self.waveform = np.sin(frequency * samples * 2 * np.pi)
     
@@ -69,9 +68,8 @@ class NoteList:
             self.pending_list.append(Note(current_time, midi_note, PENDING_DURATION, velocity))
 
     def full_waveform(self, total_duration: int, us_per_tick: float, sample_rate: int) -> None:
-        total_duration_in_ms = int(total_duration * us_per_tick / 1000)
-        samples_per_ms = int(sample_rate / 1000)
-        full_samples = np.linspace(0, total_duration_in_ms, total_duration_in_ms * samples_per_ms, False)
+        total_duration_in_s = (total_duration * us_per_tick / 1000000.0)
+        full_samples = np.linspace(0, total_duration_in_s, int(total_duration_in_s * sample_rate), False)
 
         for item in self.note_list:
 
@@ -83,12 +81,12 @@ class NoteList:
 
             full_samples[item.start_sample:sample_len] += item.waveform
 
-            full_samples *= 32767 / np.max(np.abs(full_samples))
+        full_samples *= 32767 / np.max(np.abs(full_samples))
 
-            full_samples *= 0.2 
+        full_samples *= 0.2 
     
             # Converting to 16-bit data
-            self.waveform = full_samples.astype(np.int16)
+        self.waveform = full_samples.astype(np.int16)
             
 
     def print_note_list(self):

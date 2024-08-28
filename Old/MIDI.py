@@ -1,14 +1,14 @@
 import mido
 #import time
 import audioTest
-#import numpy as np
+import numpy as np
 import simpleaudio as sa
 
 
 SAMPLE_RATE = 48000
 
 
-mid = mido.MidiFile("underground.mid")
+mid = mido.MidiFile("ending.mid")
 
 metaMessages = mid.tracks[0].copy()
 
@@ -49,6 +49,20 @@ for msg in noteMessages:
         """
 
 
+
+"""test_note = notes.note_list[1]
+
+test_note.note_waveform(us_per_tick, SAMPLE_RATE)
+
+test_waveform = test_note.waveform
+
+test_waveform *= 32767 / np.max(np.abs(test_waveform))
+
+test_waveform *= 0.2
+
+test_waveform = test_waveform.astype(np.int16)
+
+play = sa.play_buffer(test_waveform, 1, 2, SAMPLE_RATE)"""
     
 notes.full_waveform(current_time, us_per_tick, SAMPLE_RATE)
 
