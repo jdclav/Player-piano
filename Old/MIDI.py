@@ -8,7 +8,7 @@ import simpleaudio as sa
 SAMPLE_RATE = 48000
 
 
-mid = mido.MidiFile("ending.mid")
+mid = mido.MidiFile("underground.mid")
 
 metaMessages = mid.tracks[0].copy()
 
@@ -47,6 +47,9 @@ for msg in noteMessages:
         print("Time: " + str(msg.time))
         print("Current Time: " + str(current_time))
         """
+    else:
+        current_time += msg.time
+
 
 
 

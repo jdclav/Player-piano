@@ -52,10 +52,7 @@ class NoteList:
     def find_note(self, midi_note: int, current_time: int, previous_time: int, velocity: int) -> None:
 
         duration = current_time - previous_time 
-
-        if(self.pending_list == [] and (duration > 0)):
-            self.note_list.append(Note(previous_time, EMPTY_SOUND, duration, 0))
-
+            
         for item in self.pending_list:
             if item.midi_note == midi_note:
                 new_note = item
@@ -64,8 +61,12 @@ class NoteList:
                 item.set_duration(duration)
                 self.note_list.append(new_note)
                 return
-        else:
-            self.pending_list.append(Note(current_time, midi_note, PENDING_DURATION, velocity))
+            
+        if(self.pending_list == [] and (duration > 0)):
+            self.note_list.append(Note(previous_time, EMPTY_SOUND, duration, 0))
+        
+        self.pending_list.append(Note(current_time, midi_note, PENDING_DURATION, velocity))
+        
 
     def full_waveform(self, total_duration: int, us_per_tick: float, sample_rate: int) -> None:
         total_duration_in_s = (total_duration * us_per_tick / 1000000.0)
@@ -83,7 +84,7 @@ class NoteList:
 
         full_samples *= 32767 / np.max(np.abs(full_samples))
 
-        full_samples *= 0.2 
+        full_samples *= 0.5
     
             # Converting to 16-bit data
         self.waveform = full_samples.astype(np.int16)
