@@ -1,4 +1,4 @@
-base17 = (
+base18 = (
     "0",
     "1",
     "2",
@@ -16,7 +16,55 @@ base17 = (
     "E",
     "F",
     "G",
+    "H",
 )
+
+
+START_COMMENT = 0
+MOVE_COMMAND = 1
+DEPLOY_COMMAND = 2
+END_COMMAND = 3
+
+class Command:
+    def __init__ (self, command_str: str) -> None:
+        self.command_str = command_str
+
+        self.command_type = command_str[0]
+
+        if(self.command_type == "h"):
+            self.process_move_command()
+        if(self.command_type == "d"):
+            self.process_play_command()
+
+    
+    def process_move_command(self) -> None:
+
+        split_command = self.command_str.split(" ")
+
+        self.hand = int(split_command[1][1:])
+        self.position = int(split_command[2][1:])
+        self.duration = int(split_command[3][1:])
+        self.longevity = int(split_command[4][1:])        
+        
+    def process_play_command(self) -> None:
+        
+        split_command = self.command_str.split(" ")
+
+        self.hand = int(split_command[1][1:])
+        self.force = int(split_command[3][1:])
+        self.duration = int(split_command[4][1:])
+        self.longevity = int(split_command[5][1:]) 
+
+        temp_solenoid_locations = split_command[2][1:]
+        
+        temp_solenoid_list = []
+
+        for solenoid in temp_solenoid_locations:
+            if solenoid != "0":
+                temp_solenoid_list.append(base18.index(solenoid))
+
+        self.solenoid_locations = temp_solenoid_list
+
 
 
 def sorted_commandsList(path: str):
@@ -29,61 +77,46 @@ def sorted_commandsList(path: str):
 
     commandsList = []
 
+
+    dCommandsList: list[Command] = []
+
+    hCommandsList: list[Command] = []
+
     for com in commands:
-        commandsList.append(com.split(" "))
 
-    dCommandsList = []
+        processed_command = Command(com)
 
-    hCommandsList = []
+        if processed_command.command_type == "d":
+            dCommandsList.append(processed_command)
 
-    for com in commandsList:
-        if com[0] == "d":
-            dCommandsList.append(com)
-
-        elif com[0] == "h":
-            hCommandsList.append(com)
+        elif processed_command.command_type == "h":
+            hCommandsList.append(processed_command)
 
     dPlayTime = 0
 
+    """"""
+
     for com in dCommandsList:
-        com[1] = int(com[1][1:])
-        com[2] = com[2][1:]
-        com[3] = int(com[3][1:])
-        com[4] = int(com[4][1:])
-        com[5] = int(com[5][1:])
 
-        dPlayTime = dPlayTime + com[4]
+        dPlayTime = dPlayTime + com.duration
 
-        com[4] = dPlayTime
+        com.duration = dPlayTime
 
-        playKeys = []
-
-        for digit in com[2]:
-            if digit != "0":
-                playKeys.append(base17.index(digit))
-
-        com[2] = playKeys
+    """"""
 
     hPlayTime = 0
 
     for com in hCommandsList:
-        com[1] = int(com[1][1:])
-        com[2] = int(com[2][1:])
-        com[3] = int(com[3][1:])
-        com[4] = int(com[4][1:])
 
-        hPlayTime = hPlayTime + com[3]
+        hPlayTime = hPlayTime + com.duration
 
-        com[3] = hPlayTime
+        com.duration = hPlayTime
 
-    # commandsList = hCommandsList + dCommandsList
+    hCommandsList.sort(key=lambda x: x.duration)
 
-    # commandsList.sort(key=lambda x: x[3] if x[0] == "h" else x[4])
-
-    hCommandsList.sort(key=lambda x: x[3])
-
-    dCommandsList.sort(key=lambda x: x[4])
+    dCommandsList.sort(key=lambda x: x.duration)
 
     commandsList = [hCommandsList, dCommandsList]
 
     return commandsList
+

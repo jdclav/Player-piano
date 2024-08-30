@@ -6,13 +6,13 @@ import screen
 
 def main(stdscr):
     # 1 for anything other than testing
-    speedMultiply = 10
+    speedMultiply = 1
 
     path = "results.pcode"
 
-    keyWidth = 22
+    key_width = 22
 
-    rightPosition = 1
+    right_hand_position = 1
 
     commandsList = pcode_decode.sorted_commandsList(path)
 
@@ -23,11 +23,11 @@ def main(stdscr):
     displayList = []
 
     for com in commandsList[0]:
-        rightKeyDifference = (com[2] / keyWidth) - rightPosition
+        distance_in_keys = (com.position / key_width) - right_hand_position
 
-        frameList = screen.move_hand(rightKeyDifference, rightPosition, 0, com[3])
+        frameList = screen.move_hand(distance_in_keys, right_hand_position, 0, com.duration)
 
-        rightPosition = int(com[2] / keyWidth)
+        right_hand_position = int(com.position / key_width)
 
         displayList = displayList + frameList
 
@@ -37,19 +37,19 @@ def main(stdscr):
         x = 0
 
         for display in displayList:
-            if com[4] > display[1]:
+            if com.duration > display[1]:
                 x = x + 1
 
         dDisplayList.append(
             [
-                screen.actuate(displayList[x - 1][0], displayList[x - 1][2], com[2]),
-                com[4],
+                screen.actuate(displayList[x - 1][0], displayList[x - 1][2], com.solenoid_locations),
+                com.duration,
             ]
         )
         dDisplayList.append(
             [
                 screen.retract(dDisplayList[-1][0], displayList[x - 1][2]),
-                com[4] + com[5],
+                com.duration + com.longevity,
             ]
         )
 
