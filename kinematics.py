@@ -28,7 +28,7 @@ def timeDistanceDeceleration(
     """Returns time to a given distance when decelerating at a constant rate from a
     given velocity."""
     squareRoot = math.sqrt(
-        (velocity**2) - (2 * acceleration * (distance - distanceOffset))
+        abs((velocity**2) - (2 * acceleration * (distance - distanceOffset)))
     )
     return ((velocity - squareRoot) / acceleration) + timeOffset
 
@@ -48,7 +48,7 @@ def timeDistanceFunction(
     """totalDistance is the total distance traveled for this calculation so any 
     distance greater than that would be out of scope."""
     if (distance > totalDistance) or (distance < 0):
-        return timePoint
+        raise ValueError("Distance is greater than total distance.")
 
     """If the total distance is less that twice the distance it takes to get to a 
     constant velocity then constant velocity never occurs for the travel path."""
@@ -94,10 +94,9 @@ def timeDistanceList(
 ):
     """Returns a list of location-time pairs representing how long it took to get to
     the paired position."""
-    totalDistance = numberOfKeys * distanceInterval
     adjustedAcceleration = acceleration / distanceInterval
     adjustedVelocity = maxVelocity / distanceInterval
-    adjustedTotalDistance = totalDistance / distanceInterval
+    adjustedTotalDistance = numberOfKeys
 
     positions = []
 

@@ -1,7 +1,7 @@
 from curses import wrapper
-import pcode_decode
+from decode import CommandList
 import time
-import screen
+from frame import FrameList
 
 
 def main(stdscr):
@@ -10,60 +10,23 @@ def main(stdscr):
 
     path = "results.pcode"
 
-    key_width = 22
+    command_list = CommandList(path)
 
-    right_hand_position = 1
+    frame_list = FrameList()
 
-    commandsList = pcode_decode.sorted_commandsList(path)
+    frame_list.process_command_list(command_list)
 
     startTime = round(time.time() * 1000)
 
     currentTime = startTime
 
-    displayList = []
-
-    for com in commandsList[0]:
-        distance_in_keys = (com.position / key_width) - right_hand_position
-
-        frameList = screen.move_hand(distance_in_keys, right_hand_position, 0, com.duration)
-
-        right_hand_position = int(com.position / key_width)
-
-        displayList = displayList + frameList
-
-    dDisplayList = []
-
-    for com in commandsList[1]:
-        x = 0
-
-        for display in displayList:
-            if com.duration > display[1]:
-                x = x + 1
-
-        dDisplayList.append(
-            [
-                screen.actuate(displayList[x - 1][0], displayList[x - 1][2], com.solenoid_locations),
-                com.duration,
-            ]
-        )
-        dDisplayList.append(
-            [
-                screen.retract(dDisplayList[-1][0], displayList[x - 1][2]),
-                com.duration + com.longevity,
-            ]
-        )
-
-    displayList = displayList + dDisplayList
-
-    displayList.sort(key=lambda x: x[1])
-
-    for display in displayList:
-        while (currentTime - startTime) < (display[1] / speedMultiply):
+    for frame in frame_list.frames:
+        while (currentTime - startTime) < (frame.frame_time / speedMultiply):
             currentTime = round(time.time() * 1000)
 
-        stdscr.addstr(0, 0, "".join(display[0][2]))
-        stdscr.addstr(1, 0, "".join(display[0][1]))
-        stdscr.addstr(2, 0, "".join(display[0][0]))
+        stdscr.addstr(0, 0, "".join(frame.topLine))
+        stdscr.addstr(1, 0, "".join(frame.middleLine))
+        stdscr.addstr(2, 0, "".join(frame.bottomLine))
 
         stdscr.refresh()
 
