@@ -201,11 +201,10 @@ class PianoFrame:
                 self.bottomLine[self.solenoids[sol]] = DEPRESS_KEY_CHAR
                 self.middleLine[self.solenoids[sol]] = OPEN_SOLENOID_CHAR
             elif sol < 17:
-                # TODO Fix character displayed if an empty key is played.
-                # if sol in self.black_keys_index:
-                #    self.middleLine[self.solenoids[sol]] = DEPRESS_BLANK_KEY
-                # else:
-                self.middleLine[self.solenoids[sol]] = DEPRESS_KEY_CHAR
+                if self.solenoids[sol] in self.black_keys_index:
+                    self.middleLine[self.solenoids[sol]] = DEPRESS_KEY_CHAR
+                else:
+                    self.middleLine[self.solenoids[sol]] = DEPRESS_BLANK_KEY
                 self.topLine[self.solenoids[sol]] = OPEN_SOLENOID_CHAR
             else:
                 raise ValueError("Maximum location value/index is 16.")
