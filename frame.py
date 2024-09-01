@@ -20,6 +20,116 @@ MAX_VELOCITY = 300
 MAX_ACCELERATION = 3000
 
 
+BOTTOM_KEY_TO_MIDI = (
+    21,
+    23,
+    24,
+    26,
+    28,
+    29,
+    31,
+    33,
+    35,
+    36,
+    38,
+    40,
+    41,
+    43,
+    45,
+    47,
+    48,
+    50,
+    52,
+    53,
+    55,
+    57,
+    59,
+    60,
+    62,
+    64,
+    65,
+    67,
+    69,
+    71,
+    72,
+    74,
+    76,
+    77,
+    79,
+    81,
+    83,
+    84,
+    86,
+    88,
+    89,
+    91,
+    93,
+    95,
+    96,
+    98,
+    100,
+    101,
+    103,
+    105,
+    107,
+    108,
+)
+
+MIDDLE_KEY_TO_MIDI = (
+    22,
+    0,
+    25,
+    27,
+    0,
+    30,
+    32,
+    34,
+    0,
+    37,
+    39,
+    0,
+    42,
+    44,
+    46,
+    0,
+    49,
+    51,
+    0,
+    54,
+    56,
+    58,
+    0,
+    61,
+    63,
+    0,
+    66,
+    68,
+    70,
+    0,
+    73,
+    75,
+    0,
+    78,
+    80,
+    82,
+    0,
+    85,
+    87,
+    0,
+    90,
+    92,
+    94,
+    0,
+    97,
+    99,
+    0,
+    102,
+    104,
+    106,
+    0,
+)
+
+
 class PianoFrame:
     def __init__(self) -> None:
         self.white_keys_index = []
@@ -92,10 +202,10 @@ class PianoFrame:
                 self.middleLine[self.solenoids[sol]] = OPEN_SOLENOID_CHAR
             elif sol < 17:
                 # TODO Fix character displayed if an empty key is played.
-                if sol in self.black_keys_index:
-                    self.middleLine[self.solenoids[sol]] = DEPRESS_BLANK_KEY
-                else:
-                    self.middleLine[self.solenoids[sol]] = DEPRESS_KEY_CHAR
+                # if sol in self.black_keys_index:
+                #    self.middleLine[self.solenoids[sol]] = DEPRESS_BLANK_KEY
+                # else:
+                self.middleLine[self.solenoids[sol]] = DEPRESS_KEY_CHAR
                 self.topLine[self.solenoids[sol]] = OPEN_SOLENOID_CHAR
             else:
                 raise ValueError("Maximum location value/index is 16.")
@@ -165,14 +275,18 @@ class FrameList:
                 continue
 
             if len(self.movement) > 0 and self.movement[0] < next_command_time:
-                self.piano_state.shift_hand(self.movement_direction, self.movement.pop(0))
+                self.piano_state.shift_hand(
+                    self.movement_direction, self.movement.pop(0)
+                )
                 self.__capture_frame()
                 continue
 
             current_command = command_list.in_order_commands.pop(0)
 
             if current_command.command_type == "d":
-                self.piano_state.actuate(current_command.solenoid_locations, next_command_time)
+                self.piano_state.actuate(
+                    current_command.solenoid_locations, next_command_time
+                )
                 self.retract_delay = (
                     current_command.duration + current_command.longevity
                 )
@@ -192,3 +306,25 @@ class FrameList:
         while len(self.movement) > 0:
             self.piano_state.shift_hand(self.movement_direction, self.movement.pop(0))
             self.__capture_frame()
+
+
+class AudioFrame:
+    def __init__(self) -> None:
+        self.midi_notes: list[int] = []
+
+    def line_index_to_midi(self, piano_frame: PianoFrame):
+        bottom_indicies = [
+            int(i / 2)
+            for i, x in enumerate(piano_frame.bottomLine)
+            if x == DEPRESS_KEY_CHAR
+        ]
+        middle_indicies = [
+            int((i - 1) / 2)
+            for i, x in enumerate(piano_frame.middleLine)
+            if x == DEPRESS_KEY_CHAR
+        ]
+
+        for i in bottom_indicies:
+            self.midi_notes.append(BOTTOM_KEY_TO_MIDI[i + 4])
+        for i in middle_indicies:
+            self.midi_notes.append(MIDDLE_KEY_TO_MIDI[i + 4])

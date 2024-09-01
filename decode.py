@@ -1,4 +1,4 @@
-base18 = (
+BASE18 = (
     "0",
     "1",
     "2",
@@ -59,7 +59,7 @@ class Command:
 
         for solenoid in temp_solenoid_locations:
             if solenoid != "0":
-                temp_solenoid_list.append(base18.index(solenoid))
+                temp_solenoid_list.append(BASE18.index(solenoid))
 
         self.solenoid_locations = temp_solenoid_list
 
@@ -105,5 +105,3 @@ class CommandList:
         self.play_commands.sort(key=lambda x: x.duration)
         self.in_order_commands = self.move_commands + self.play_commands
         self.in_order_commands.sort(key=lambda x: x.duration)
-
-        
