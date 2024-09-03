@@ -311,6 +311,10 @@ class AudioFrame:
     def __init__(self) -> None:
         self.midi_notes: list[int] = []
 
+        self.frame_start: float = 0
+
+        self.frame_stop: float = 0
+
     def line_index_to_midi(self, piano_frame: PianoFrame):
         bottom_indicies = [
             int(i / 2)
@@ -327,3 +331,9 @@ class AudioFrame:
             self.midi_notes.append(BOTTOM_KEY_TO_MIDI[i + 4])
         for i in middle_indicies:
             self.midi_notes.append(MIDDLE_KEY_TO_MIDI[i + 4])
+
+    def set_frame_time(self, frame_time: float) -> None:
+        self.frame_time = frame_time
+
+    def set_frame_duration(self, frame_duration: float) -> None:
+        self.frame_duration = frame_duration

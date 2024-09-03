@@ -59,9 +59,8 @@ class NoteList:
         self, total_duration: int, us_per_tick: float, sample_rate: int
     ) -> None:
         total_duration_in_s = total_duration * us_per_tick / 1000000.0
-        full_samples = np.linspace(
-            0, total_duration_in_s, int(total_duration_in_s * sample_rate), False
-        )
+
+        full_samples = np.zeros(int(total_duration_in_s * sample_rate))
 
         for item in self.note_list:
             item.note_waveform(us_per_tick, sample_rate)

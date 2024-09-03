@@ -1,12 +1,14 @@
 import mido
 import audioTest
 import simpleaudio as sa
+import os
 
 
 SAMPLE_RATE = 48000
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
-mid = mido.MidiFile("underground.mid")
+mid = mido.MidiFile(dir_path + "/underground.mid")
 
 metaMessages: list[mido.Message] = mid.tracks[0].copy()
 noteMessages: list[mido.Message] = mid.tracks[1].copy()
