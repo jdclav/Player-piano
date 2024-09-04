@@ -242,6 +242,7 @@ class FrameList:
     def __init__(self) -> None:
         self.piano_state: PianoFrame = PianoFrame()
         self.frames: list[PianoFrame] = []
+        self.audio_frames: list[AudioFrame] = []
 
         self.piano_state.populate_hand(INITIAL_HAND_POSITION)
 
@@ -271,6 +272,7 @@ class FrameList:
                 self.piano_state.retract(self.retract_delay)
                 self.__capture_frame()
                 self.retract_delay = 0
+                self.audio_frames[-1].set_frame_stop(self.piano_state.frame_time)
                 continue
 
             if len(self.movement) > 0 and self.movement[0] < next_command_time:
@@ -289,6 +291,9 @@ class FrameList:
                 self.retract_delay = (
                     current_command.duration + current_command.longevity
                 )
+                self.audio_frames.append(AudioFrame())
+                self.audio_frames[-1].frame_start = self.piano_state.frame_time
+                self.audio_frames[-1].line_index_to_midi(self.piano_state)
                 self.__capture_frame()
 
             elif current_command.command_type == "h":
@@ -301,6 +306,7 @@ class FrameList:
             self.piano_state.retract(self.retract_delay)
             self.__capture_frame()
             self.retract_delay = 0
+            self.audio_frames[-1].set_frame_stop(self.piano_state.frame_time)
 
         while len(self.movement) > 0:
             self.piano_state.shift_hand(self.movement_direction, self.movement.pop(0))
@@ -310,10 +316,9 @@ class FrameList:
 class AudioFrame:
     def __init__(self) -> None:
         self.midi_notes: list[int] = []
-
         self.frame_start: float = 0
-
         self.frame_stop: float = 0
+        self.duration = 0
 
     def line_index_to_midi(self, piano_frame: PianoFrame):
         bottom_indicies = [
@@ -332,8 +337,9 @@ class AudioFrame:
         for i in middle_indicies:
             self.midi_notes.append(MIDDLE_KEY_TO_MIDI[i + 4])
 
-    def set_frame_time(self, frame_time: float) -> None:
-        self.frame_time = frame_time
+    def set_frame_start(self, frame_start: float) -> None:
+        self.frame_start = frame_start
 
-    def set_frame_duration(self, frame_duration: float) -> None:
-        self.frame_duration = frame_duration
+    def set_frame_stop(self, frame_stop: float) -> None:
+        self.frame_stop = frame_stop
+        self.duration = self.frame_stop - self.frame_start

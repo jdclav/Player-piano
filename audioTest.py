@@ -28,6 +28,9 @@ class Note:
 
         self.waveform = np.sin(frequency * samples * 2 * np.pi)
 
+    def __str__(self) -> str:
+        return "Note: " + str(self.midi_note) + " Duration: " + str(self.duration)
+
 
 class NoteList:
     def __init__(self):
@@ -55,6 +58,11 @@ class NoteList:
             Note(current_time, midi_note, PENDING_DURATION, velocity)
         )
 
+    def add_note(
+        self, midi_note: int, current_time: int, duration: int, velocity: int
+    ) -> None:
+        self.note_list.append(Note(current_time, midi_note, duration, velocity))
+
     def full_waveform(
         self, total_duration: int, us_per_tick: float, sample_rate: int
     ) -> None:
@@ -73,7 +81,7 @@ class NoteList:
 
         full_samples *= 32767 / np.max(np.abs(full_samples))
 
-        full_samples *= 0.5
+        full_samples *= 0.2
 
         # Converting to 16-bit data
         self.waveform = full_samples.astype(np.int16)

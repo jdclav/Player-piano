@@ -2,6 +2,10 @@ from curses import wrapper
 from decode import CommandList
 import time
 from frame import FrameList
+from audioTest import NoteList
+import simpleaudio as sa
+
+SAMPLE_RATE = 48000
 
 
 def main(stdscr):
@@ -15,6 +19,24 @@ def main(stdscr):
     frame_list = FrameList()
 
     frame_list.process_command_list(command_list)
+
+    notes = NoteList()
+
+    for frame in frame_list.audio_frames:
+        for note in frame.midi_notes:
+            notes.add_note(note, frame.frame_start, frame.duration, 10)
+
+    for i, note in enumerate(notes.note_list):
+        if note.duration < 0:
+            print("Index: " + str(i) + " " + str(note))
+
+    notes.full_waveform(frame_list.piano_state.frame_time, 1000, SAMPLE_RATE)
+
+    # Start audio
+    play = sa.play_buffer(notes.waveform, 1, 2, SAMPLE_RATE)
+
+    # play.wait_done()
+    # play.stop()
 
     startTime = round(time.time() * 1000)
 
