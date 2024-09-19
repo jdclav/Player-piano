@@ -228,10 +228,8 @@ preMove = 100
 # THIS IS WHAT TO MODIFY SEBASTIAN v
 
 
-TEMP_PATH = Path("/home/pi/pcode_processing")
-
 ### THIS IS WHAT TO MODIFY SEBASTIAN ###
-music_path = str(TEMP_PATH.joinpath("music.txt"))
+music_path = str(("music.txt"))
 print(f"Compiling Music File: {music_path}")
 
 with open(music_path, mode="r", encoding="utf-8") as f:
@@ -785,7 +783,7 @@ for x, part in enumerate(locations):
 
 # Output file
 ## #SEBASTIAN THIS IS YOUR PLACE ###
-output = str(TEMP_PATH.joinpath("results.pcode"))
+output = str(("results.pcode"))
 
 pcode = []
 with open(output, "w") as f:

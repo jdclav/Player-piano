@@ -32,11 +32,7 @@ def main(stdscr):
 
     notes.full_waveform(frame_list.piano_state.frame_time, 1000, SAMPLE_RATE)
 
-    # Start audio
-    play = sa.play_buffer(notes.waveform, 1, 2, SAMPLE_RATE)
-
-    # play.wait_done()
-    # play.stop()
+    sa.play_buffer(notes.waveform, 1, 2, SAMPLE_RATE)
 
     startTime = round(time.time() * 1000)
 
