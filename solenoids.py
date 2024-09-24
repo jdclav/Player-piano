@@ -33,13 +33,12 @@ class SolenoidIndex:
         # TODO Break into smaller functions
         if not check_key_count(key_count):
             raise ValueError("key_count must be 88, 76, 61, or 49.")
-
         temp_array = []
         for i in range(0, first_key.midi_number):
             temp_array.append(None)
 
         note_offset = ord(first_key.step) - ord("A")
-
+        end_key_count = 16
         solenoid_positions: list[int] = [0]
 
         for i in range(first_key.midi_number, first_key.midi_number + key_count):
@@ -49,7 +48,7 @@ class SolenoidIndex:
                         WHITE_ROW, solenoid_positions.copy()
                     )
                     temp_array.append(new_positions)
-                    if first_key.midi_number + key_count - i >= 15:
+                    if first_key.midi_number + key_count - i >= end_key_count:
                         solenoid_positions.insert(0, solenoid_positions[0] + 1)
                         if len(solenoid_positions) > 9:
                             solenoid_positions.pop()
@@ -73,9 +72,7 @@ class SolenoidIndex:
                         WHITE_ROW, solenoid_positions.copy()
                     )
                     temp_array.append(new_positions)
-                    if (
-                        first_key.midi_number + key_count - i >= 15
-                    ):  # TODO Figure out how to determine the cuttoff for pianos other than just 88
+                    if first_key.midi_number + key_count - i >= end_key_count:
                         solenoid_positions.insert(0, solenoid_positions[0] + 1)
                         if len(solenoid_positions) > 9:
                             solenoid_positions.pop()
@@ -100,5 +97,5 @@ if __name__ == "__main__":
 
     indexes = SolenoidIndex(88, constants.first_88_key)
 
-    for i, item in enumerate(indexes.index_list):
+    for i, item in enumerate(indexes.index_list[21:109]):
         print(str(i) + ": " + str(item))

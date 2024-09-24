@@ -271,6 +271,9 @@ elif hand == "L":
 else:
     sys.exit("The input file is not correct")
 
+
+###############################################################################################################################################################
+
 # Variables used in processing to map the keyboard and playable notes based on number of keys and starting key
 top = None
 bottom = None
@@ -323,6 +326,9 @@ while (index + 1) < len(positions):
         j += 1
     if endOffset < 7:
         endOffset += 1
+
+
+#########################################################################################################
 
 # Variables used in following processing
 sharp = []
