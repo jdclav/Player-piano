@@ -37,6 +37,7 @@ class SolenoidIndex:
         for i in range(0, first_key.midi_number):
             temp_array.append(None)
 
+        # TODO does this account for half steps? I don't think so.
         note_offset = ord(first_key.step) - ord("A")
         end_key_count = 16
         solenoid_positions: list[int] = [0]
