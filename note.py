@@ -83,6 +83,7 @@ def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
     return ((note_offset * 2) - missing_half_step) + octave_offset + alter
 
 
+
 file = LE.parse("test.musicxml")
 
 root = file.getroot()
@@ -105,7 +106,7 @@ piano_part = root.xpath(".//part[@id='" + piano_part_id + "']")[0]
 
 piano_divisions = int(piano_part.find(".//divisions").text)
 
-# piano_beats = piano_part.find(".//beats").text
+piano_beats = piano_part.find(".//beats").text
 
 piano_beat_type = int(piano_part.find(".//beat-type").text)
 
@@ -129,8 +130,18 @@ note_list: list[list] = []
 
 note_start = 0
 
+piano_measures  = piano_part.xpath(".//measure")
+
+measure_count = len(piano_measures)
+
+note_duration = 0
+
 # TODO Add invalid value checking
 for note in piano_notes:
+    
+    prev_note_duration = note_duration
+
+    # TEMP Check if note is on an existing Staff. Add new list if staff is unique
     note_staff = note.xpath(".//staff")
     if len(note_staff) > 0:
         staff = int(note_staff[0].text)
@@ -139,11 +150,16 @@ for note in piano_notes:
     while len(note_list) < staff:
         note_list.append([])
 
+
     note_duration = int(note.xpath(".//duration")[0].text)
 
     note_pitch = note.xpath(".//pitch")
     note_rest = note.xpath(".//rest")
+
+    # If the note has a pitch then it is actually a note.
     if len(note_pitch) > 0:
+
+        # Find all the info to convert the note pitch to MIDI pitch.
         note_letter = note_pitch[0].xpath("step")[0].text
         note_octave = int(note_pitch[0].xpath("octave")[0].text)
         note_alter = note_pitch[0].xpath("alter")
@@ -152,10 +168,48 @@ for note in piano_notes:
         else:
             note_alter = 0
         note_midi = pitch_to_midi(note_letter, note_octave, note_alter)
-        new_XMLNote = XMLNote(note_start, note_duration, note_midi)
-        note_list[staff - 1].append(new_XMLNote)
-        note_start += note_duration
+
+        # Check if the note is part of a chord
+        note_chord = note.xpath(".//chord")
+        if(len(note_chord) > 0):
+            note_start -= prev_note_duration
+
+            # Store all relavent info about the note.
+            new_XMLNote = XMLNote(note_start, note_duration, note_midi)
+            note_list[staff - 1].append(new_XMLNote)
+
+            note_start += prev_note_duration
+            note_duration = prev_note_duration
+            #pass
+            
+        else:
+            #pass
+
+            # Store all relavent info about the note.
+            new_XMLNote = XMLNote(note_start, note_duration, note_midi)
+            note_list[staff - 1].append(new_XMLNote)
+
+            note_start += note_duration
+
+        
+
+        
+    # Rests don't need to be stored and only move the timing forward.
     elif len(note_rest) > 0:
         note_start += note_duration
+
+    # A note that is neither a true note or rest should be a backup and need to
+    # turn back the note_start counter.
     else:
         note_start -= note_duration
+
+for items in note_list:
+    print(
+        "=================================================================================================="
+    )
+    for item in items:
+        print(item)
+
+#These are verifications. They should calculate the numbers and use as pass fail
+print(piano_divisions * 4) 
+print((note_start + 72)/measure_count)
