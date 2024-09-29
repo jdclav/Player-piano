@@ -29,13 +29,10 @@ class XMLNote:
 
 class NoteList:
     def __init__(self) -> None:
-        notes: list[XMLNote] = []
+        self.notes: list[XMLNote] = []
 
-
-class PartMusicXML:
-    def __init__(self) -> None:
-        # TODO Use this to handle the weirdness of multiple parts and the possiblity of multiple staves per part.
-        pass
+    def append(self, XMLNote) -> None:
+        self.notes.append(XMLNote)
 
 
 class MusicXML:
@@ -44,6 +41,7 @@ class MusicXML:
         self.root = self.file.getroot()
         self.parts = self.root.findall("part")
         self.part_ids: list[str] = self.find_part_ids
+        self.find_part("P1")
 
     def find_part_ids(self) -> list[str]:
         temp: list[str] = []
@@ -54,9 +52,13 @@ class MusicXML:
 
         # TODO
 
+    def find_part(self, part_id: str) -> LE._Element:
+        part = root.find(".//part[@id='" + part_id + "']")
+        return part
+
     def find_staff_count(self, part_id: str) -> int:
         temp: list[str] = []
-        matched_part = root.xpath(".//part[@id='" + part_id + "']")[0]
+        matched_part = root.find(".//part[@id='" + part_id + "']")
         measures = matched_part.findall(".//note/staff")
         for item in measures:
             temp.append(item.text)
@@ -98,8 +100,63 @@ class MusicXML:
         # TODO Maybe raise an exception. Ideally if volume is missing that can be selected by user.
         return MISSING_VOLUME
 
-    def generate_note_list(self, part_id: str) -> NoteList:
-        pass
+    def generate_note_list(self, part_id: str) -> list[NoteList]:
+        self.find_part(part_id)
+        notes: list[LE._Element] = piano_part.xpath(".//note | .//backup")
+        staff_count = self.find_staff_count(part_id)
+        notes_list: list[NoteList] = [NoteList for x in range(staff_count)]
+        note_start = 0
+        note_duration = 0
+        velocity: int = music_xml.find_velocity(part_id)
+        for note in notes:
+            prev_note_duration = note_duration
+            note_duration = int(note.xpath(".//duration")[0].text)
+            note_pitch = note.xpath(".//pitch")
+            note_rest = note.xpath(".//rest")
+
+            # If the note has a pitch then it is actually a note.
+            if len(note_pitch) > 0:
+                # Find all the info to convert the note pitch to MIDI pitch.
+                note_letter = note_pitch[0].xpath("step")[0].text
+                note_octave = int(note_pitch[0].xpath("octave")[0].text)
+                note_alter = note_pitch[0].xpath("alter")
+                if len(note_alter) > 0:
+                    note_alter = int(note_alter[0].text)
+                else:
+                    note_alter = 0
+                note_midi = pitch_to_midi(note_letter, note_octave, note_alter)
+
+                # Check if the note is part of a chord
+                note_chord = note.xpath(".//chord")
+                if len(note_chord) > 0:
+                    note_start -= prev_note_duration
+
+                    # Store all relavent info about the note.
+                    new_XMLNote = XMLNote(
+                        note_start, note_duration, note_midi, velocity
+                    )
+                    notes_list[staff - 1].append(new_XMLNote)  # HERE
+
+                    note_start += prev_note_duration
+                    note_duration = prev_note_duration
+
+                else:
+                    # Store all relavent info about the note.
+                    new_XMLNote = XMLNote(
+                        note_start, note_duration, note_midi, velocity
+                    )
+                    notes_list[staff - 1].append(new_XMLNote)  # HERE
+
+                    note_start += note_duration
+
+            # Rests don't need to be stored and only move the timing forward.
+            elif len(note_rest) > 0:
+                note_start += note_duration
+
+            # A note that is neither a true note or rest should be a backup and need to
+            # turn back the note_start counter.
+            else:
+                note_start -= note_duration
 
 
 def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
@@ -118,39 +175,25 @@ def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
 
 if __name__ == "__main__":
     file = LE.parse("test.musicxml")
-
     root = file.getroot()
-
     parts = root.findall("part")
-
     partlist = root.find("part-list")
-
     part_list = partlist.findall(".//score-part")
-
     part_ids = []
     for item in part_list:
         part_ids.append(item.attrib["id"])
-
     piano_part_id = partlist.find(".//*[part-name='Piano']").attrib["id"]
-
     test = root.findall(".//*[@id='" + piano_part_id + "']")
-
     piano_part = root.xpath(".//part[@id='" + piano_part_id + "']")[0]
-
     piano_divisions = int(piano_part.find(".//divisions").text)
-
     piano_beats = piano_part.find(".//beats").text
-
     piano_beat_type = int(piano_part.find(".//beat-type").text)
-
     piano_tempo = piano_part.find(".//*[@tempo]")
-
     if piano_tempo is not None:
         tempo = int(piano_tempo.attrib["tempo"])
     else:
         # TODO Randomish default if no tempo is defined
         tempo = 120
-
     us_per_div = MusicXML.division_ms(piano_divisions, tempo, piano_beat_type)
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
