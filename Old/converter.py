@@ -358,7 +358,7 @@ for x, note in enumerate(playable):
     allValues.append(int(value[0]))
 
 # Variable used in next processing stage
-places = []
+
 # Identify all possible notes durations played
 possibleValues = list(set(allValues))
 possibleValues.sort()
@@ -379,6 +379,7 @@ for x, part in enumerate(possibleValues):
     scores = []
 
 # Variables used in next processing step
+places = []
 spots = []
 locate = []
 compare = []
@@ -397,11 +398,11 @@ for x, note in enumerate(values):
     adjust.append(0)
 
     if not playList:
-        places.append(values[x][1])
-        playList = notes[values[x][1]]
-        spots.append(places[x])
-        locate.append(places[x])
-        setValues.append(int(note[0]))
+        places.append(values[x][1])  #
+        playList = notes[values[x][1]]  #
+        spots.append(places[x])  #
+        locate.append(places[x])  #
+        setValues.append(int(note[0]))  #
         continue
 
     hold = set(playList).intersection(notes[values[x][1]])
