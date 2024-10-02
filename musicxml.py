@@ -28,11 +28,28 @@ class XMLNote:
 
 
 class NoteList:
-    def __init__(self) -> None:
+    def __init__(self, part_id: str, staff_number: int) -> None:
         self.notes: list[XMLNote] = []
+        self.part_id = part_id
+        self.staff_number = staff_number
 
     def append(self, XMLNote) -> None:
         self.notes.append(XMLNote)
+
+    def __str__(self) -> str:
+        temp = ""
+        for note in self.notes:
+            temp += str(note) + "\n"
+        return temp
+
+    def __iter__(self):  # TODO Type hint?
+        return iter(self.notes)
+
+
+class PartInfo:
+    def __init__(self, id: str, staff_count: int) -> None:
+        self.id = id
+        self.staff_count = staff_count
 
 
 class MusicXML:
@@ -40,30 +57,34 @@ class MusicXML:
         self.file = LE.parse(path)
         self.root = self.file.getroot()
         self.parts = self.root.findall("part")
-        self.part_ids: list[str] = self.find_part_ids
-        self.find_part("P1")
+        self.part_ids = self.find_part_ids()
 
-    def find_part_ids(self) -> list[str]:
+    def find_part_ids(self) -> list[PartInfo]:
         temp: list[str] = []
         partlist_element = self.root.find("part-list")
         part_list = partlist_element.findall(".//score-part")
-        for item in part_list:
-            temp.append(item.attrib["id"])
-
-        # TODO
+        for part in part_list:
+            part_id = part.attrib["id"]
+            staff_count = self.find_staff_count(part_id)
+            part_info = PartInfo(part_id, staff_count)
+            temp.append(part_info)
+        return temp
 
     def find_part(self, part_id: str) -> LE._Element:
-        part = root.find(".//part[@id='" + part_id + "']")
+        part = self.root.find(f".//part[@id='{part_id}']")
         return part
 
     def find_staff_count(self, part_id: str) -> int:
         temp: list[str] = []
-        matched_part = root.find(".//part[@id='" + part_id + "']")
+        matched_part = self.find_part(part_id)
         measures = matched_part.findall(".//note/staff")
         for item in measures:
             temp.append(item.text)
         temp = set(temp)
-        return len(temp)
+        staff_count = len(temp)
+        if staff_count == 0:
+            staff_count = 1
+        return staff_count
 
     def division_ms(divisions: int, tempo: int, beat_type: int) -> int:
         quarters_per_beat = 4 / beat_type
@@ -100,19 +121,26 @@ class MusicXML:
         # TODO Maybe raise an exception. Ideally if volume is missing that can be selected by user.
         return MISSING_VOLUME
 
-    def generate_note_list(self, part_id: str) -> list[NoteList]:
-        self.find_part(part_id)
-        notes: list[LE._Element] = piano_part.xpath(".//note | .//backup")
-        staff_count = self.find_staff_count(part_id)
-        notes_list: list[NoteList] = [NoteList for x in range(staff_count)]
+    def generate_note_list(self, part_info: PartInfo) -> list[NoteList]:
+        part = self.find_part(part_info.id)
+        notes = list[LE._Element](part.xpath(".//note | .//backup"))
+        notes_list: list[NoteList] = []
+        for i in range(0, part_info.staff_count):
+            new_note_list = NoteList(part_info.id, i + 1)
+            notes_list.append(new_note_list)
         note_start = 0
         note_duration = 0
-        velocity: int = music_xml.find_velocity(part_id)
+        velocity: int = self.find_velocity(part_info.id)
         for note in notes:
             prev_note_duration = note_duration
             note_duration = int(note.xpath(".//duration")[0].text)
             note_pitch = note.xpath(".//pitch")
             note_rest = note.xpath(".//rest")
+            note_staff = note.xpath(".//staff")
+            if len(note_staff) > 0:
+                staff = int(note_staff[0].text)
+            else:
+                staff = 1
 
             # If the note has a pitch then it is actually a note.
             if len(note_pitch) > 0:
@@ -157,6 +185,8 @@ class MusicXML:
             # turn back the note_start counter.
             else:
                 note_start -= note_duration
+
+        return notes_list
 
 
 def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
