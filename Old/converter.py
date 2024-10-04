@@ -153,6 +153,9 @@ notes = [
     C8,
     R,
 ]
+"""
+List that contains lists of values for solenoid playable mapping.
+"""
 
 # Parallel list which has the notes name as a string
 positions = [
@@ -259,6 +262,7 @@ playable = mNoteSpace[3:]
 
 # creates a list with a size equal to the playable notes
 values = [None] * len(playable)
+"""Will hold numeric(still str) versions of everything listed in playable. Note PITCH.OCTAVE is converter to key location/index"""
 
 # The duration of a whole note
 noteDuration = round(noteType * beatDuration * 1000)
@@ -278,6 +282,7 @@ else:
 top = None
 bottom = None
 allValues = []
+"""Holds the integer note type of each note."""
 index = 0
 beginningOffset = 0
 keyPositions = [None] * 8
@@ -332,10 +337,13 @@ while (index + 1) < len(positions):
 
 # Variables used in following processing
 sharp = []
+"""Holds either a 1 or 0 to denote whether the playable note that aligns to the same index is a half step higher"""
 rest = []
+"""Holds either a 1 or 0 to denote whether the playable note that aligns to the same index is a rest"""
 # Break playable notes into both note and pitch values
 for x, note in enumerate(playable):
     value = note.split("/")
+    """List with the pitch and note type"""
 
     if value[1].find("S") != -1:
         sharp.append(1)
@@ -348,12 +356,16 @@ for x, note in enumerate(playable):
     else:
         rest.append(0)
 
-    place = positions.index(value[1].strip())
+    check_index = value[1].strip()
+    place = positions.index(check_index)
+    """Map the note in value to the corrisponding index/location on the piano"""
 
     if handedness == 0:
-        values[x] = [value[0], place + sharp[-1]]
+        value_pair = [value[0], place + sharp[-1]]
     else:
-        values[x] = [value[0], place]
+        value_pair = [value[0], place]
+
+    values[x] = value_pair
 
     allValues.append(int(value[0]))
 
@@ -386,17 +398,41 @@ for x, part in enumerate(possibleValues):
 
 # Variables used in next processing step
 places = []
+"""
+Stores each key position from each note
+"""
 spots = []
+"""
+Holds the first key index/location then each key index less than the last for the group
+"""
 locate = []
+"""
+Holds the first key index/location then each key index more than the last for the group
+"""
 compare = []
 contrast = []
 playList = []
+"""
+Most recent confirmed valid set of hand positions that are valid to play all the notes in playSet
+"""
 playSet = []
+"""
+Groups of notes that can be played without moving.
+"""
 changes = []
+"""
+For each note holds the number of keys that can be moved to the left after playing the note # MAYBE
+"""
 adjust = []
+"""
+For each note holds the number of keys that can be moved to the right after playing the note # MAYBE
+"""
 fowardChange = []
 fowardAdjust = []
 setValues = []
+"""
+Note type in the playSet
+"""
 # TODO
 
 # Creates sets of playable notes with each set able to be played without any movement
@@ -413,6 +449,9 @@ for x, note in enumerate(values):
         continue
 
     hold = set(playList).intersection(notes[values[x][1]])
+    """
+    The current set of hand positions that are valid to play all the notes in PlayList plus the current note
+    """
 
     if hold:
         places.append(values[x][1])
