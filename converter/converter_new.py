@@ -25,6 +25,6 @@ if __name__ == "__main__":
 
     first_part = music_xml.part_ids[1]
 
-    first_staff = music_xml.generate_note_list(first_part)
+    first_staff = music_xml.generate_note_list(first_part)[0]
 
-    find_still_groups(first_staff[0])
+    find_still_groups(first_staff)

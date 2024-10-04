@@ -6,6 +6,8 @@ BASE_OCTAVE_OFFSET = 1
 
 MISSING_VOLUME = -1
 
+# TODO Look for dynamics in measure
+
 
 class XMLNote:
     def __init__(

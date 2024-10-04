@@ -365,6 +365,10 @@ possibleValues.sort()
 noteScores = []
 scores = []
 
+#########################################################################################################
+
+# vvv Not yet completed
+
 # Assign a score with lower meaning better based on a cost function based on how many keys are moved to each played note. Score of 1 or more means the note cannot be played
 for x, part in enumerate(possibleValues):
     noteTime = noteDuration / part
@@ -377,6 +381,8 @@ for x, part in enumerate(possibleValues):
         keys = keys + 1
     noteScores.append([part, scores])
     scores = []
+
+###################################################################################
 
 # Variables used in next processing step
 places = []
@@ -391,6 +397,7 @@ adjust = []
 fowardChange = []
 fowardAdjust = []
 setValues = []
+# TODO
 
 # Creates sets of playable notes with each set able to be played without any movement
 for x, note in enumerate(values):
@@ -457,6 +464,9 @@ playSet.append([playList.copy(), places.copy(), top, bottom, setValues])
 fowardChange.append(changes)
 fowardAdjust.append(adjust)
 
+
+################################################################################
+
 # Variables used in nect processing step
 setValues = []
 places = []
@@ -470,6 +480,8 @@ adjust = []
 fullChange = []
 fullAdjust = []
 
+
+# TODO What does this do?
 
 for x, part in enumerate(playSet):
     if len(playSet) == 1:
@@ -527,6 +539,8 @@ finalPre = []
 finalPost = []
 locate = []
 
+# TODO What does this do?
+
 for x, part in enumerate(playSet):
     if not compare:
         compare = part
@@ -560,6 +574,8 @@ finalPost.append([0])
 
 compare = []
 
+# TODO What does this do?
+
 for x, part in enumerate(playSet):
     if len(playSet) == 1:
         compare.append([0])
@@ -577,6 +593,8 @@ locate = compare.copy()
 
 move = []
 
+# TODO What does this do?
+
 for x, part in enumerate(locate):
     if len(playSet) == 1:
         break
@@ -588,6 +606,8 @@ for x, part in enumerate(locate):
 
 moveSet = []
 
+
+# TODO What does this do?
 
 for x, place in enumerate(playSet):
     part = playSet[-1 * (x + 1)]
@@ -693,6 +713,9 @@ locations = []
 
 currentValue = compare[0][0]
 
+
+# TODO What does this do?
+
 for x, part in enumerate(playSet):
     if len(playSet) == 1:
         locations = [playSet[0][0][-1]] * len(playSet[0][1])
@@ -730,8 +753,12 @@ moveLongevity = []
 durationSum = 0
 
 
+# TODO This adds a force value for each note.
+
 for part in locations:
     playForce.append(10)
+
+# TODO What does this do? I think this finds how long each note should be held for. .i.e longevity
 
 for x, part in enumerate(locations):
     if x == 0:
@@ -771,6 +798,9 @@ indexSole = []
 
 binarySole = []
 
+
+# TODO Create the output for which finger is playing which solenoid
+
 for x, part in enumerate(locations):
     if (handedness == 0) & (sharp[x] == 1):
         change = 8
@@ -788,8 +818,9 @@ for x, part in enumerate(locations):
 
     playNotes.append([base17[indexSole[x] + 1 + change], "0", "0", "0", "0"])
 
-# Output file
-## #SEBASTIAN THIS IS YOUR PLACE ###
+
+# TODO Generate Output File
+
 output = str(("results.pcode"))
 
 pcode = []
@@ -834,17 +865,6 @@ with open(output, "w") as f:
 # f.close()
 
 print(f"p-code File Exported: {output}")
-
-
-"""
-finalPost[-1 * (x + 1)]
-
-Assign each note a move value. 
-
-finalPre[-1 * (x)]
-
-print(playSet[-1*(x+1)])
-"""
 
 
 if __name__ == "__main__":
