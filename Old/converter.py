@@ -476,8 +476,15 @@ for x, note in enumerate(values):
     playSet.append([playList.copy(), places.copy(), top, bottom, setValues])
 
     playList = []
+
     fowardChange.append(changes)
+    """
+    
+    """
     fowardAdjust.append(adjust)
+    """"
+    
+    """
 
     spots = []
     locate = []
@@ -520,7 +527,7 @@ fullChange = []
 fullAdjust = []
 
 
-# TODO What does this do?
+# Finds which notes in the group restrict right/left movement and by how many keys. Can use this to make preemtive moves.
 
 for x, part in enumerate(playSet):
     if len(playSet) == 1:
@@ -539,29 +546,41 @@ for x, part in enumerate(playSet):
     changes = [0] * len(compare)
     adjust = [0] * len(compare)
 
-    for y, stuff in enumerate(checks):
+    # For every different pitch in the playable group
+    for stuff in checks:
+        # Find the note in the group that is the farthest right
         for z, spot in enumerate(compare):
             if spot == top:
+                # A sorted list of each pitch in the compare group
                 locate = sorted(list(set(compare)))
 
+                # Replace the top value with the next largest value
                 if len(locate) > 1:
                     top = locate[-2]
 
+                # Remove all notes that occur after the current note for the next go around
                 compare = compare[0:z]
                 places.append([spot, z])
+                # If there are multiple potential moves then record where/when a move can be made and by how many keys.
                 if len(places) > 1:
                     changes[places[-2][1]] = places[-1][0] - places[-2][0]
                 break
 
+        # For every different pitch in the playable group
         for z, spot in enumerate(contrast):
+            # Find the note in the group that is the farthest left
             if spot == bottom:
+                # A sorted list of each pitch in the compare group
                 locate = sorted(list(set(contrast)))
 
+                # Replace the bottom value with the next smallest value
                 if len(locate) > 1:
-                    bottom = locate[2]
+                    bottom = locate[1]
 
+                # Remove all notes that occur after the current note for the next go around
                 contrast = contrast[0:z]
                 spots.append([spot, z])
+                # If there are multiple potential moves then record where/when a move can be made and by how many keys.
                 if len(spots) > 1:
                     adjust[spots[-2][1]] = spots[-1][0] - spots[-2][0]
                 break
@@ -578,7 +597,8 @@ finalPre = []
 finalPost = []
 locate = []
 
-# TODO What does this do?
+
+# Find which direction each group need to move from and to.
 
 for x, part in enumerate(playSet):
     if not compare:
@@ -588,6 +608,7 @@ for x, part in enumerate(playSet):
             locate.append(part[3])
         continue
 
+    # Will the next move by right/left
     if part[3] > compare[3]:
         finalPre.append(fowardAdjust[x])
         finalPost.append(fullAdjust[x - 1])
@@ -598,6 +619,7 @@ for x, part in enumerate(playSet):
             locate.append(part[3])
             continue
 
+    # Will the next move by right/left
     if part[3] < compare[3]:
         finalPre.append(fowardChange[x])
         finalPost.append(fullChange[x - 1])
