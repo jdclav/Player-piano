@@ -1,23 +1,17 @@
 import os
 
 from musicxml import MusicXML, NoteList
-
-
-def find_still_groups(note_list: NoteList) -> list[NoteList]:
-    temp_group = NoteList(note_list.part_id, note_list.staff_number)
-
-    for note in note_list:
-        if not temp_group.notes:
-            temp_group.append(note)
-
-        else:
-            new_group = set(temp_group.notes).intersection()
+from playable import PlayableNoteList
+from solenoids import SolenoidIndex
+from constants import Constants
 
 
 if __name__ == "__main__":
     # TODO Should be replaced by user input
     current_directory = os.path.dirname(os.path.realpath(__file__))
     file_name = "test.musicxml"
+    constants = Constants()
+    key_map = SolenoidIndex(88, constants.first_88_key)
 
     xml_file = f"{current_directory}/{file_name}"
 
@@ -27,4 +21,6 @@ if __name__ == "__main__":
 
     first_staff = music_xml.generate_note_list(first_part)[0]
 
-    find_still_groups(first_staff)
+    playable_list = PlayableNoteList(key_map, first_staff)
+
+    find_still_groups(playable_list)

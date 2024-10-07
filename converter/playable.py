@@ -1,6 +1,9 @@
 from solenoids import SolenoidIndex
 from musicxml import NoteList
 
+OUTSIDE_LOCATION = 1
+INSIDE_LOCATION = 0
+
 
 class PlayableNote:
     def __init__(
@@ -17,21 +20,23 @@ class PlayableNote:
         self.velocity = velocity
         self.key_map = key_map
 
-        self.possible_locations = self.key_map.playable_for_pitch(self.midi_pitches[0])
-
-    def add_pitch(self, new_midi_pitch: int) -> int:
-        self.midi_pitches.append(new_midi_pitch)
-
-        new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
-
-        self.possible_locations = set(self.possible_locations).intersection(
-            new_locations
+        self.possible_locations = set(
+            self.key_map.playable_for_pitch(self.midi_pitches[0])
         )
 
-        if self.possible_locations:
-            return 0
+    def add_pitch(self, new_midi_pitch: int) -> int:
+        new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
+        temp_locations = set(self.possible_locations).intersection(new_locations)
+
+        if temp_locations:
+            self.possible_locations = temp_locations
+            self.midi_pitches.append(new_midi_pitch)
+            return INSIDE_LOCATION
         else:
-            return 1
+            return OUTSIDE_LOCATION
+
+    def __iter__(self) -> list[int]:
+        return iter(self.midi_pitches)
 
     def __str__(self) -> str:
         temp_str = f"Start: {self.note_start}, "
@@ -76,11 +81,57 @@ class PlayableNoteList:
 
                 self.playable_list.append(temp_playable)
 
+    def __iter__(self) -> list[PlayableNote]:
+        return iter(self.playable_list)
+
     def __str__(self) -> str:
         temp = ""
         for playable in self.playable_list:
             temp += str(playable) + "\n"
         return temp
+
+
+class PlayableGroup:
+    def __init__(self) -> None:
+        self.playable_group: list[PlayableNote] = []
+        self.possible_locations: set[int] = []
+
+    def append(self, note: PlayableNote):
+
+        new_locations = note.possible_locations
+
+        temp_locations = set(self.possible_locations).intersection(new_locations)
+
+        if temp_locations:
+            self.possible_locations = temp_locations
+            self.playable_group.append(note)
+            return INSIDE_LOCATION
+
+        elif self.possible_locations:
+            return OUTSIDE_LOCATION
+        else:
+            self.possible_locations = note.possible_locations
+            return INSIDE_LOCATION
+
+
+class PlayableGroupList:
+    def __init__(self, key_map: SolenoidIndex, note_list: PlayableNoteList) -> None:
+        self.key_map = key_map
+        self.note_list = note_list
+        self.group_list: list[PlayableGroup] = []
+        self.find_groups()
+
+    def find_groups(self) -> None:
+
+        temp_group = PlayableGroup()
+
+        for note in self.note_list:
+            success = temp_group.append(note)
+
+            if success == OUTSIDE_LOCATION:
+                self.group_list.append(temp_group)
+                temp_group = PlayableGroup()
+                temp_group.append(note)
 
 
 if __name__ == "__main__":
@@ -103,6 +154,8 @@ if __name__ == "__main__":
 
     first_staff = music_xml.generate_note_list(first_part)[0]
 
-    test = PlayableNoteList(key_map, first_staff)
+    note_list = PlayableNoteList(key_map, first_staff)
 
-    print(test)
+    group_list = PlayableGroupList(key_map, note_list)
+
+    print(group_list)

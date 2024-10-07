@@ -635,18 +635,22 @@ finalPost.append([0])
 
 compare = []
 
-# TODO What does this do?
+# TODO Determine the positions each group should start/end on. Not including premoves???
 
 for x, part in enumerate(playSet):
+    # If there is only a single playable group then there is no efficency improvment.
     if len(playSet) == 1:
         compare.append([0])
         break
+    # If this is the first group
     if x == 0:
         compare.append([locate[0], locate[1][0]])
         continue
+    # If this is the last group
     if len(playSet) == x + 1:
         compare.append([locate[x][1], locate[x + 1]])
         continue
+    # else
     compare.append([locate[x][1], locate[x + 1][0]])
 
 locate = compare.copy()
@@ -654,31 +658,36 @@ locate = compare.copy()
 
 move = []
 
-# TODO What does this do?
+# TODO Find how much
 
 for x, part in enumerate(locate):
+    # No efficency for single group
     if len(playSet) == 1:
         break
+    # How much should the first group move during playing.
     move.append([locate[x][1] - locate[x][0], 0])
 
+    # If the last item then we are done.
     if (x + 1) == len(locate):
         continue
+    # How much should the first group move to get to the next group.
     move[x][1] = locate[x + 1][0] - locate[x][1]
 
 moveSet = []
 
 
-# TODO What does this do?
+# TODO This finds where each movement should occur based on a cost? function.
 
 for x, place in enumerate(playSet):
+    # Select items from playSet in reverse order.
     part = playSet[-1 * (x + 1)]
     if x == 0:
         prevPart = part
         continue
 
-    preLength = move[-1 * (x + 1)][0]
-    postLength = move[-1 * (x + 1)][1]
-    totalLength = sum(move[-1 * (x + 1)])
+    preLength = move[-1 * (x + 1)][0]  # Movement in group
+    postLength = move[-1 * (x + 1)][1]  # Movement after group
+    totalLength = sum(move[-1 * (x + 1)])  # Total movement of pre and post move
     preChosen = []
     postChosen = []
     lastChosen = 0
@@ -686,8 +695,8 @@ for x, place in enumerate(playSet):
     for i in range(0, abs(totalLength), 1):
         moveLocate = []
 
-        preSum = abs(sum(finalPre[-1 * (x)]))
-        postSum = abs(move[-1 * (x + 1)][0])
+        preSum = abs(sum(finalPre[-1 * (x)]))  # Total pre movement in the group
+        postSum = abs(move[-1 * (x + 1)][0])  # Total movement after the group
 
         preHeld = -1
         postHeld = -1
@@ -703,8 +712,8 @@ for x, place in enumerate(playSet):
 
         bestScore = 1
 
-        for j in range(0, len(prevPart[1]) - 1, 1):
-            if (finalPre[-1 * (x)][j]) != 0:
+        for j in range(0, len(prevPart[1]) - 1, 1): # for each note in the prePart group
+            if (finalPre[-1 * (x)][j]) != 0: # If the pre movement allow movement
                 preIndex = j
                 if preSum > 0:
                     scoresList = []
@@ -718,16 +727,16 @@ for x, place in enumerate(playSet):
                         preSelect = preIndex
                 preSum -= abs(finalPre[-1 * (x)][j])
 
-        for j in range(0, len(part[1]) - 1, 1):
-            if finalPost[-1 * (x + 1)][j] != 0:
+        for j in range(0, len(part[1]) - 1, 1): # for each note in the current part
+            if finalPost[-1 * (x + 1)][j] != 0: # If the post movement allow movement
                 postIndex = j
                 specialMoves += abs(finalPost[-1 * (x + 1)][j])
-            if (postSum + specialMoves) > 0:
+            if (postSum + specialMoves) > 0: # If these is a possible move at current key in current part
                 scoresList = []
-                for score in noteScores:
+                for score in noteScores: # Find the current note type and assign cost to scoreList
                     if score[0] == part[4][j]:
                         scoresList = score[1]
-                if scoresList[postChosen.count(j) + 1] <= bestScore:
+                if scoresList[postChosen.count(j) + 1] <= bestScore: # Determine if the current note has a better score for moving
                     bestScore = scoresList[postChosen.count(j) + 1]
                     bestLocate = 1
                     postHeld = j
