@@ -111,6 +111,7 @@ class PlayableGroup:
             return OUTSIDE_LOCATION
         else:
             self.possible_locations = note.possible_locations
+            self.playable_group.append(note)
             return INSIDE_LOCATION
 
 
@@ -132,6 +133,8 @@ class PlayableGroupList:
                 self.group_list.append(temp_group)
                 temp_group = PlayableGroup()
                 temp_group.append(note)
+
+        self.group_list.append(temp_group)
 
 
 if __name__ == "__main__":
