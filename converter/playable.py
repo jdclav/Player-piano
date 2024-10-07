@@ -162,3 +162,60 @@ if __name__ == "__main__":
     group_list = PlayableGroupList(key_map, note_list)
 
     print(group_list)
+
+
+"""
+Rough steps for compiling (Not for sure in this exact order):
+
+Step 0: Ingest data and process it into format that can be used for Step 1 - 6
+
+Step 1: Put notes into groups that can be played without the need for right/left movement
+
+Step 2: Determine from each group which direction the hand will come from and go to.
+
+Step 3: Based on the in/out direction of the hand what leniency can be granted while moving to the group
+
+Step 4: Based on the in/out direction what movement should take place during the playing of the group
+
+Step 5: Determine based on a cost function when a given movement should take place based on data from Step 2 - 4
+
+Step 6: Use data to generate hardware playable file.
+
+
+
+Possible group in/out:
+
+Start/
+    End # Single group. No need for additional processing
+    Right/
+        out overlap # Try to start and end as far right as the next group wants to go
+        no overlap # Try to start and end as far right as possible
+    Left/
+        out overlap # Try to start and end as far left as possible
+        no overlap # Try to start and end as far left as possible
+Right/
+    End # Last group. Only leniency movement needed
+    Right/
+        in overlap # Try to start as far right as the previous group wants to go and end as far right as possible
+        out overlap # Try to start and end as far right as the next group wants to go
+        in out overlap # Try to start as far right as the previous group wants to go and end as far right as the next group want to go
+        no overlap # Try to start and end as far right as possible
+    Left/
+        in overlap # Try to start as far right as the previous group wants to go and end as far left as possible
+        out overlap # Try to start as far right as possible and end as far left as the next group wants to go
+        in out overlap # Try to start as far right as the previous group wants to go and end as far left as the next group want to go
+        no overlap # Try to start as far right as possible and end as far left as possible
+Left/
+    End # Last group. Only leniency movement needed
+    Right/
+        in overlap # Try to start as far left was the previous group wants to go and end as far right as possible
+        out overlap # Try to start as far left as possible and end as far right as the next group wants to go
+        in out overlap # Try to start as far left as the previous group wants to go and end as far right as the next group want to go
+        no overlap # Try to start as far left as possible and end as far right as possible
+    Left/
+        in overlap # Try to start as far left as the previous group wants to go and end as far left as possible
+        out overlap # Try to start and end as far left as the next group want to go
+        in out overlap # Try to start as far left as the previous group wants to go and end as far left as the next group want to go
+        no overlap # Try to start and end as far left as possible
+
+"""
