@@ -188,34 +188,34 @@ Possible group in/out:
 Start/
     End # Single group. No need for additional processing
     Right/
-        out overlap # Try to start and end as far right as the next group wants to go
-        no overlap # Try to start and end as far right as possible
+        out overlap # start and end as far right as the next group desires
+        no overlap # start and end as far right as possible
     Left/
-        out overlap # Try to start and end as far left as possible
-        no overlap # Try to start and end as far left as possible
+        out overlap # start and end as far left as possible
+        no overlap # start and end as far left as possible
 Right/
     End # Last group. Only leniency movement needed
     Right/
-        in overlap # Try to start as far right as the previous group wants to go and end as far right as possible
-        out overlap # Try to start and end as far right as the next group wants to go
-        in out overlap # Try to start as far right as the previous group wants to go and end as far right as the next group want to go
-        no overlap # Try to start and end as far right as possible
+        in overlap # start as far right as the previous group desires, end as far right as possible
+        out overlap # start and end as far right as the next group desires
+        in out overlap # start as far right as the previous group desires, end as far right as the next group want to go
+        no overlap # start and end as far right as possible
     Left/
-        in overlap # Try to start as far right as the previous group wants to go and end as far left as possible
-        out overlap # Try to start as far right as possible and end as far left as the next group wants to go
-        in out overlap # Try to start as far right as the previous group wants to go and end as far left as the next group want to go
-        no overlap # Try to start as far right as possible and end as far left as possible
+        in overlap # start as far right as the previous group desires, end as far left as possible
+        out overlap # start as far right as possible, end as far left as the next group desires
+        in out overlap # start as far right as the previous group desires, end as far left as the next group want to go
+        no overlap # start as far right as possible, end as far left as possible
 Left/
     End # Last group. Only leniency movement needed
     Right/
-        in overlap # Try to start as far left was the previous group wants to go and end as far right as possible
-        out overlap # Try to start as far left as possible and end as far right as the next group wants to go
-        in out overlap # Try to start as far left as the previous group wants to go and end as far right as the next group want to go
-        no overlap # Try to start as far left as possible and end as far right as possible
+        in overlap # start as far left was the previous group desires, end as far right as possible
+        out overlap # start as far left as possible, end as far right as the next group desires
+        in out overlap # start as far left as the previous group desires, end as far right as the next group want to go
+        no overlap # start as far left as possible, end as far right as possible
     Left/
-        in overlap # Try to start as far left as the previous group wants to go and end as far left as possible
-        out overlap # Try to start and end as far left as the next group want to go
-        in out overlap # Try to start as far left as the previous group wants to go and end as far left as the next group want to go
-        no overlap # Try to start and end as far left as possible
+        in overlap # start as far left as the previous group desires, end as far left as possible
+        out overlap # start and end as far left as the next group want to go
+        in out overlap # start as far left as the previous group desires, end as far left as the next group want to go
+        no overlap # start and end as far left as possible
 
 """
