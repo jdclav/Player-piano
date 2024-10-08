@@ -1,8 +1,19 @@
+from collections import Counter
+
 from solenoids import SolenoidIndex
 from musicxml import NoteList
 
 OUTSIDE_LOCATION = 1
 INSIDE_LOCATION = 0
+
+NO_DIRECTION = 0
+LEFT_DIRECTION = 1
+RIGHT_DIRECTION = 2
+UNKNOWN_DIRECTION = 3
+
+NO_OVERLAP = 0
+YES_OVERLAP = 1
+UNKNOWN_OVERLAP = 2
 
 
 class PlayableNote:
@@ -95,6 +106,17 @@ class PlayableGroup:
     def __init__(self) -> None:
         self.playable_group: list[PlayableNote] = []
         self.possible_locations: set[int] = []
+        self.movement_directions: list[int] = [UNKNOWN_DIRECTION, UNKNOWN_DIRECTION]
+        """
+        Contains two values. 
+        The direction the previous group was and the direction the next group will be.
+        0: No group. This is be used for the beginning and ending values
+        1: Group to the left.
+        2: Group to the right.
+        3: Not yet assigned.
+        """
+        self.movement_overlap: list[int] = [UNKNOWN_OVERLAP, UNKNOWN_OVERLAP]
+        self.yields: list[int] = []
 
     def append(self, note: PlayableNote):
 
@@ -113,6 +135,36 @@ class PlayableGroup:
             self.possible_locations = note.possible_locations
             self.playable_group.append(note)
             return INSIDE_LOCATION
+
+    def set_in_direction(self, direction: int) -> None:
+        self.movement_directions[0] = direction
+
+    def set_out_direction(self, direction: int) -> None:
+        self.movement_directions[1] = direction
+
+    def set_in_overlap(self, overlap: int) -> None:
+        self.movement_overlap[0] = overlap
+
+    def set_out_overlap(self, overlap: int) -> None:
+        self.movement_overlap[1] = overlap
+
+    def find_in_yield(self) -> None:
+        in_direction = self.movement_directions[0]
+        in_overlap = self.movement_overlap[0]
+
+        if in_direction == NO_DIRECTION:
+            self.yields = [0] * len(self.playable_group)
+
+        elif in_direction == LEFT_DIRECTION:
+            pitch_occurances = Counter(
+                [pitch for note in self.playable_group for pitch in note]
+            )
+            pass
+
+    def find_out_yield(self) -> None:
+        out_direction = self.movement_directions[1]
+        out_overlap = self.movement_overlap[1]
+        pass
 
 
 class PlayableGroupList:
@@ -135,6 +187,60 @@ class PlayableGroupList:
                 temp_group.append(note)
 
         self.group_list.append(temp_group)
+
+    def find_directions(self) -> None:
+        previous_group: PlayableGroup = PlayableGroup()
+        groups = self.group_list
+
+        for i in range(len(groups)):
+            current_group = groups[i]
+            # Compare groups starting after the first
+            if i != 0:
+                previous_low_note = min(previous_group.playable_group[0])
+                current_low_note = min(current_group.playable_group[0])
+
+                if previous_low_note < current_low_note:
+                    previous_group.set_out_direction(RIGHT_DIRECTION)
+                    current_group.set_in_direction(LEFT_DIRECTION)
+                else:
+                    previous_group.set_out_direction(LEFT_DIRECTION)
+                    current_group.set_in_direction(RIGHT_DIRECTION)
+
+                if i == (len(groups) - 1):
+                    current_group.set_out_direction(NO_DIRECTION)
+
+            elif i == 0:
+                current_group.set_in_direction(NO_DIRECTION)
+
+            previous_group = groups[i]
+
+    def find_overlap(self) -> None:
+        previous_group: PlayableGroup = PlayableGroup()
+        groups = self.group_list
+
+        for i in range(len(groups)):
+            current_group = groups[i]
+            # Compare groups starting after the first
+            if i != 0:
+                previous_locations = previous_group.possible_locations
+                current_locations = current_group.possible_locations
+
+                temp_locations = set(previous_locations).intersection(current_locations)
+
+                if temp_locations:
+                    previous_group.set_out_overlap(YES_OVERLAP)
+                    current_group.set_in_overlap(YES_OVERLAP)
+                else:
+                    previous_group.set_out_overlap(NO_OVERLAP)
+                    current_group.set_in_overlap(NO_OVERLAP)
+
+                if i == (len(groups) - 1):
+                    current_group.set_out_overlap(NO_OVERLAP)
+
+            elif i == 0:
+                current_group.set_in_overlap(NO_OVERLAP)
+
+            previous_group = groups[i]
 
 
 if __name__ == "__main__":
@@ -161,17 +267,23 @@ if __name__ == "__main__":
 
     group_list = PlayableGroupList(key_map, note_list)
 
+    group_list.find_directions()
+
+    group_list.find_overlap()
+
+    group_list.group_list[1].find_in_yield()
+
     print(group_list)
 
 
 """
 Rough steps for compiling (Not for sure in this exact order):
 
-Step 0: Ingest data and process it into format that can be used for Step 1 - 6
+Step 0: Ingest data and process it into format that can be used for Step 1 - 6 # Working example done
 
 Step 1: Put notes into groups that can be played without the need for right/left movement
 
-Step 2: Determine from each group which direction the hand will come from and go to.
+Step 2: Determine from each group which direction the hand will come from and go to as well as if the groups overlap
 
 Step 3: Based on the in/out direction of the hand what leniency can be granted while moving to the group
 
