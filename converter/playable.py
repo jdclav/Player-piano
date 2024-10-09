@@ -1,5 +1,3 @@
-from collections import Counter
-
 from solenoids import SolenoidIndex
 from musicxml import NoteList
 
@@ -31,13 +29,16 @@ class PlayableNote:
         self.velocity = velocity
         self.key_map = key_map
 
+        new_locations = self.key_map.playable_for_pitch(midi_pitch)
+
         self.possible_locations = set(
-            self.key_map.playable_for_pitch(self.midi_pitches[0])
+            filter(lambda item: item is not None, new_locations)
         )
 
     def add_pitch(self, new_midi_pitch: int) -> int:
         new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
-        temp_locations = set(self.possible_locations).intersection(new_locations)
+        filtered_locations = set(filter(lambda item: item is not None, new_locations))
+        temp_locations = set(self.possible_locations) & filtered_locations
 
         if temp_locations:
             self.possible_locations = temp_locations
@@ -45,6 +46,14 @@ class PlayableNote:
             return INSIDE_LOCATION
         else:
             return OUTSIDE_LOCATION
+
+    def highest_position(self) -> int:
+        """
+        Finds the furthest right the hand can be posistioned and still play every pitch
+
+        return: Integer value that represent hand position.
+        """
+        return min(self.possible_locations)
 
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
@@ -54,7 +63,7 @@ class PlayableNote:
         temp_str += f"Duration: {self.duration}, "
         temp_str += f"Midi_Pitches: {self.midi_pitches}, "
         temp_str += f"Velocity: {self.velocity}, "
-        temp_str += f" Possible Locations: {self.possible_locations}"
+        temp_str += f"Possible Locations: {self.possible_locations}"
         return temp_str
 
 
@@ -116,6 +125,7 @@ class PlayableGroup:
         3: Not yet assigned.
         """
         self.movement_overlap: list[int] = [UNKNOWN_OVERLAP, UNKNOWN_OVERLAP]
+        self.group_distance: list[int] = [0, 0]
         self.yields: list[int] = []
 
     def append(self, note: PlayableNote):
@@ -148,17 +158,32 @@ class PlayableGroup:
     def set_out_overlap(self, overlap: int) -> None:
         self.movement_overlap[1] = overlap
 
+    def set_in_distance(self, distance: int) -> None:
+        self.group_distance[0] = distance
+
+    def set_out_distance(self, distance: int) -> None:
+        self.group_distance[1] = distance
+
+    def find_default_position(self) -> int:
+        return min(self.possible_locations)
+
+    def sorted_pitches(self) -> list[int]:
+        all_pitches = [pitch for note in self.playable_group for pitch in note]
+        each_unique_pitch = set(all_pitches)
+        return sorted(each_unique_pitch)
+
     def find_in_yield(self) -> None:
         in_direction = self.movement_directions[0]
         in_overlap = self.movement_overlap[0]
 
         if in_direction == NO_DIRECTION:
             self.yields = [0] * len(self.playable_group)
+            return
 
-        elif in_direction == LEFT_DIRECTION:
-            pitch_occurances = Counter(
-                [pitch for note in self.playable_group for pitch in note]
-            )
+        ordered_pitches = self.sorted_pitches()
+
+        if in_direction == LEFT_DIRECTION:
+
             pass
 
     def find_out_yield(self) -> None:
@@ -215,7 +240,7 @@ class PlayableGroupList:
             previous_group = groups[i]
 
     def find_overlap(self) -> None:
-        previous_group: PlayableGroup = PlayableGroup()
+        previous_group = PlayableGroup()
         groups = self.group_list
 
         for i in range(len(groups)):
@@ -241,6 +266,29 @@ class PlayableGroupList:
                 current_group.set_in_overlap(NO_OVERLAP)
 
             previous_group = groups[i]
+
+    def find_group_distance(self) -> None:
+        """
+        Find the total distance needed to travel from the last group and
+        to the next group for each Playable Group
+        """
+        previous_group = PlayableGroup()
+        previous_location: int = 0
+        for i, group in enumerate(self.group_list):
+            current_location = group.find_default_position()
+            if i != 0:
+                distance = current_location - previous_location
+                group.set_in_distance(distance)
+                previous_group.set_out_distance(distance)
+                if i == (len(self.group_list) - 1):
+                    group.set_out_distance(0)
+            else:
+                group.set_in_distance(0)
+
+            previous_group = group
+            previous_location = current_location
+
+        pass
 
 
 if __name__ == "__main__":
@@ -270,6 +318,8 @@ if __name__ == "__main__":
     group_list.find_directions()
 
     group_list.find_overlap()
+
+    group_list.find_group_distance()
 
     group_list.group_list[1].find_in_yield()
 
