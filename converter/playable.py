@@ -30,10 +30,11 @@ class PlayableNote:
         self.key_map = key_map
 
         new_locations = self.key_map.playable_for_pitch(midi_pitch)
-
         self.possible_locations = set(
             filter(lambda item: item is not None, new_locations)
         )
+
+        self.default_location = min(self.possible_locations)
 
     def add_pitch(self, new_midi_pitch: int) -> int:
         new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
@@ -43,17 +44,10 @@ class PlayableNote:
         if temp_locations:
             self.possible_locations = temp_locations
             self.midi_pitches.append(new_midi_pitch)
+            self.default_location = min(self.possible_locations)
             return INSIDE_LOCATION
         else:
             return OUTSIDE_LOCATION
-
-    def highest_position(self) -> int:
-        """
-        Finds the furthest right the hand can be posistioned and still play every pitch
-
-        return: Integer value that represent hand position.
-        """
-        return min(self.possible_locations)
 
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
@@ -167,10 +161,9 @@ class PlayableGroup:
     def find_default_position(self) -> int:
         return min(self.possible_locations)
 
-    def sorted_pitches(self) -> list[int]:
-        all_pitches = [pitch for note in self.playable_group for pitch in note]
-        each_unique_pitch = set(all_pitches)
-        return sorted(each_unique_pitch)
+    def sorted_locations(self) -> list[int]:
+        each_unique_location = set.union(*self.playable_group)
+        return sorted(each_unique_location)
 
     def find_in_yield(self) -> None:
         in_direction = self.movement_directions[0]
@@ -180,11 +173,16 @@ class PlayableGroup:
             self.yields = [0] * len(self.playable_group)
             return
 
-        ordered_pitches = self.sorted_pitches()
+        ordered_locations = self.sorted_locations()
 
         if in_direction == LEFT_DIRECTION:
+            final_pitch = ordered_locations[-1]
 
             pass
+        elif in_direction == RIGHT_DIRECTION:
+            final_pitch = ordered_locations[0]
+        else:
+            raise (TypeError("Direction no specified."))
 
     def find_out_yield(self) -> None:
         out_direction = self.movement_directions[1]
