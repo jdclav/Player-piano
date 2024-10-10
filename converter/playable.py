@@ -118,9 +118,8 @@ class PlayableGroup:
         2: Group to the right.
         3: Not yet assigned.
         """
-        self.movement_overlap: list[int] = [UNKNOWN_OVERLAP, UNKNOWN_OVERLAP]
-        self.group_distance: list[int] = [0, 0]
-        self.yields: list[int] = []
+        self.need_moves: list[int] = []
+        self.freed_moves: list[int] = []
 
     def append(self, note: PlayableNote):
 
@@ -146,48 +145,108 @@ class PlayableGroup:
     def set_out_direction(self, direction: int) -> None:
         self.movement_directions[1] = direction
 
-    def set_in_overlap(self, overlap: int) -> None:
-        self.movement_overlap[0] = overlap
-
-    def set_out_overlap(self, overlap: int) -> None:
-        self.movement_overlap[1] = overlap
-
-    def set_in_distance(self, distance: int) -> None:
-        self.group_distance[0] = distance
-
-    def set_out_distance(self, distance: int) -> None:
-        self.group_distance[1] = distance
-
     def find_default_position(self) -> int:
         return min(self.possible_locations)
 
-    def sorted_locations(self) -> list[int]:
-        each_unique_location = set.union(*self.playable_group)
-        return sorted(each_unique_location)
+    def min_locations(self, direction: bool) -> list[int]:
+        """
+        Finds the minimum location for each playable note in order.
+        """
+        locations: list[int] = []
 
-    def find_in_yield(self) -> None:
+        for note in self.playable_group:
+            locations.append(min(note.possible_locations))
+
+        unique_locations = list(set(locations))
+
+        unique_locations.sort(reverse=direction)
+
+        return unique_locations
+
+    def max_locations(self, direction: bool) -> list[int]:
+        """
+        Finds the maximum location for each playable note in order.
+        """
+        locations: list[int] = []
+
+        for note in self.playable_group:
+            locations.append(max(note.possible_locations))
+
+        unique_locations = list(set(locations))
+
+        unique_locations.sort(reverse=direction)
+
+        return unique_locations
+
+    def find_need_moves(self) -> None:
         in_direction = self.movement_directions[0]
-        in_overlap = self.movement_overlap[0]
+
+        self.need_moves = [0] * len(self.playable_group)
 
         if in_direction == NO_DIRECTION:
-            self.yields = [0] * len(self.playable_group)
             return
 
-        ordered_locations = self.sorted_locations()
-
         if in_direction == LEFT_DIRECTION:
-            final_pitch = ordered_locations[-1]
-
-            pass
+            ordered_locations = self.min_locations(True)
+            current_group = self.playable_group
+            while len(ordered_locations) > 0 and len(current_group) > 1:
+                target_location = ordered_locations.pop(0)
+                for i, note in enumerate(current_group):
+                    min_location = min(note.possible_locations)
+                    if min_location == target_location:
+                        self.need_moves[i] = target_location - ordered_locations[0]
+                        current_group = current_group[0:i]
+                        break
         elif in_direction == RIGHT_DIRECTION:
-            final_pitch = ordered_locations[0]
+            ordered_locations = self.max_locations(False)
+            current_group = self.playable_group
+            while len(ordered_locations) > 0 and len(current_group) > 1:
+                target_location = ordered_locations.pop(0)
+                for i, note in enumerate(current_group):
+                    max_location = max(note.possible_locations)
+                    if max_location == target_location:
+                        self.need_moves[i] = target_location - ordered_locations[0]
+                        current_group = current_group[0:i]
+                        break
         else:
             raise (TypeError("Direction no specified."))
 
-    def find_out_yield(self) -> None:
+    def find_freed_moves(self) -> None:
         out_direction = self.movement_directions[1]
-        out_overlap = self.movement_overlap[1]
-        pass
+
+        self.freed_moves = [0] * len(self.playable_group)
+
+        if out_direction == NO_DIRECTION:
+            return
+
+        if out_direction == LEFT_DIRECTION:
+            ordered_locations = self.max_locations(False)
+            current_group = list(reversed(self.playable_group))
+            while len(ordered_locations) > 0 and len(current_group) > 1:
+                target_location = ordered_locations.pop(0)
+                for i, note in enumerate(current_group):
+                    min_location = max(note.possible_locations)
+                    if min_location == target_location:
+                        self.freed_moves[-i - 1] = (
+                            target_location - ordered_locations[0]
+                        )
+                        current_group = current_group[0:i]
+                        break
+        elif out_direction == RIGHT_DIRECTION:
+            ordered_locations = self.min_locations(True)
+            current_group = list(reversed(self.playable_group))
+            while len(ordered_locations) > 0 and len(current_group) > 1:
+                target_location = ordered_locations.pop(0)
+                for i, note in enumerate(current_group):
+                    max_location = min(note.possible_locations)
+                    if max_location == target_location:
+                        self.freed_moves[-i - 1] = (
+                            target_location - ordered_locations[0]
+                        )
+                        current_group = current_group[0:i]
+                        break
+        else:
+            raise (TypeError("Direction no specified."))
 
 
 class PlayableGroupList:
@@ -237,57 +296,6 @@ class PlayableGroupList:
 
             previous_group = groups[i]
 
-    def find_overlap(self) -> None:
-        previous_group = PlayableGroup()
-        groups = self.group_list
-
-        for i in range(len(groups)):
-            current_group = groups[i]
-            # Compare groups starting after the first
-            if i != 0:
-                previous_locations = previous_group.possible_locations
-                current_locations = current_group.possible_locations
-
-                temp_locations = set(previous_locations).intersection(current_locations)
-
-                if temp_locations:
-                    previous_group.set_out_overlap(YES_OVERLAP)
-                    current_group.set_in_overlap(YES_OVERLAP)
-                else:
-                    previous_group.set_out_overlap(NO_OVERLAP)
-                    current_group.set_in_overlap(NO_OVERLAP)
-
-                if i == (len(groups) - 1):
-                    current_group.set_out_overlap(NO_OVERLAP)
-
-            elif i == 0:
-                current_group.set_in_overlap(NO_OVERLAP)
-
-            previous_group = groups[i]
-
-    def find_group_distance(self) -> None:
-        """
-        Find the total distance needed to travel from the last group and
-        to the next group for each Playable Group
-        """
-        previous_group = PlayableGroup()
-        previous_location: int = 0
-        for i, group in enumerate(self.group_list):
-            current_location = group.find_default_position()
-            if i != 0:
-                distance = current_location - previous_location
-                group.set_in_distance(distance)
-                previous_group.set_out_distance(distance)
-                if i == (len(self.group_list) - 1):
-                    group.set_out_distance(0)
-            else:
-                group.set_in_distance(0)
-
-            previous_group = group
-            previous_location = current_location
-
-        pass
-
 
 if __name__ == "__main__":
     import os
@@ -315,13 +323,21 @@ if __name__ == "__main__":
 
     group_list.find_directions()
 
-    group_list.find_overlap()
+    for group in group_list.group_list:
+        group.find_need_moves()
 
-    group_list.find_group_distance()
-
-    group_list.group_list[1].find_in_yield()
+    for group in group_list.group_list:
+        group.find_freed_moves()
 
     print(group_list)
+
+
+"""
+            minimum_first_note = min(self.playable_group[0].possible_locations)
+            minimum_previous_note = min()
+            first_move =
+
+"""
 
 
 """
