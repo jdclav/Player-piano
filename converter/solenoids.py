@@ -101,5 +101,5 @@ if __name__ == "__main__":
 
     indexes = SolenoidIndex(88, constants.first_88_key)
 
-    for i, item in enumerate(indexes.index_list[21:109]):
+    for i, item in enumerate(indexes.index_list):
         print(str(i) + ": " + str(item))
