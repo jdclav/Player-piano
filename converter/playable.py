@@ -19,6 +19,18 @@ class PlayableNote:
         midi_pitch: int,
         velocity: int,
     ) -> None:
+        """
+        Holds all the information for a single playable set of notes. This could be a single key or a chord.
+        Only contains a single start time and total duration so any keys played with a different start or duration
+        must be held in a different instance.
+
+        param key_map: A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
+                       hand positions for a giving pitch.
+        param note_start: An integer that represents the start time of the note(s) in terms of musicXML ticks.
+        param duration: An integer that represents the total duration the note(s) in terms of musicXML ticks.
+        param midi_pitch: An integer that represents the pitch of the note equivilent to the midi pitch number.
+        param velocity: An integer that represents the volume of the note(s) similar to midi velocity.
+        """
         self.note_start = note_start
         self.duration = duration
         self.midi_pitches = [midi_pitch]
@@ -33,6 +45,14 @@ class PlayableNote:
         self.default_location = min(self.possible_locations)
 
     def add_pitch(self, new_midi_pitch: int) -> int:
+        """
+        Adds an additional pitch to the note. If the start, duration, and velocity are the same seperate pitches should
+        be stored together in the PlayableNote using this function. If the pitch cannot be played at the same time
+        as each currently stored note then do not add the note and return 1 else return 0.
+
+        param new_midi_pitch: An integer that represents the pitch of the note equivilent to the midi pitch number
+                              that will be added to the PlayableNote.
+        """
         new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
         filtered_locations = set(filter(lambda item: item is not None, new_locations))
         temp_locations = set(self.possible_locations) & filtered_locations
@@ -55,17 +75,32 @@ class PlayableNote:
         temp_str += f"Velocity: {self.velocity}, "
         temp_str += f"Possible Locations: {self.possible_locations}"
         return temp_str
+    
+    def __repr__(self) -> str:
+        return f"{self.note_start}, {self.duration}, {self.midi_pitches}, {self.velocity, {self.possible_locations}}"
 
 
 class PlayableNoteList:
     def __init__(self, key_map: SolenoidIndex, note_list: NoteList) -> None:
+        """
+        Takes in a NoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
+        to chords.
+        
+        param key_map: A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
+                       hand positions for a giving pitch.
+        param note_list: A NoteList object containing each note for a particular staff of a musicxml part.
+        """
         self.key_map = key_map
-        self.note_list = note_list
         self.playable_list: list[PlayableNote] = []
-        self.process_list()
+        self.process_list(note_list)
 
-    def process_list(self):
-        for note in self.note_list:
+    def process_list(self, note_list: NoteList) -> None:
+        """
+        Processes the note_list into a list of PlayableNotes.
+
+        param note_list: A NoteList object containing each note for a particular staff of a musicxml part.
+        """
+        for note in note_list:
             if self.playable_list:
                 previous_playable = self.playable_list[-1]
                 if previous_playable.note_start == note.note_start:
@@ -99,10 +134,19 @@ class PlayableNoteList:
         for playable in self.playable_list:
             temp += str(playable) + "\n"
         return temp
+    
+    def __repr__(self) -> str:
+        temp = ""
+        for playable in self.playable_list:
+            temp += repr(playable) + "\n"
+        return temp
 
 
 class PlayableGroup:
     def __init__(self) -> None:
+        """
+        Represents a group of PlayableNotes that can be played without any hand movement.
+        """
         self.playable_group: list[PlayableNote] = []
         self.possible_locations: set[int] = []
         self.movement_directions: list[int] = [UNKNOWN_DIRECTION, UNKNOWN_DIRECTION]
@@ -119,7 +163,10 @@ class PlayableGroup:
         self.need_points: list[int, int] = []
         self.freed_points: list[int, int] = []
 
-    def append(self, note: PlayableNote):
+    def append(self, note: PlayableNote) -> int:
+        """
+
+        """
         new_locations = note.possible_locations
 
         temp_locations = set(self.possible_locations).intersection(new_locations)
@@ -141,6 +188,13 @@ class PlayableGroup:
 
     def set_out_direction(self, direction: int) -> None:
         self.movement_directions[1] = direction
+
+    def set_need_points(self, last_note: PlayableNote) -> None:
+        
+        self.need_points.insert(0, [0,0])
+
+    def set_freed_points(self, next_note: PlayableNote) -> None:
+        self.freed_points.append([0,0])
 
     def find_default_position(self) -> int:
         return min(self.possible_locations)
@@ -206,7 +260,6 @@ class PlayableGroup:
                         self.need_points.append([i, target_location])
                         current_group = current_group[0:i]
                         break
-            print("test")
         else:
             raise (TypeError("Direction no specified."))
 
@@ -245,12 +298,25 @@ class PlayableGroup:
             raise (TypeError("Direction no specified."))
 
 
+    def __str__(self) -> str:
+        temp = ""
+        for playable in self.playable_group:
+            temp += str(playable) + "\n"
+        return temp
+     
+    def __repr__(self) -> str:
+        temp = ""
+        for playable in self.playable_group:
+            temp += repr(playable) + "\n"
+        return temp
+
 class PlayableGroupList:
     def __init__(self, key_map: SolenoidIndex, note_list: PlayableNoteList) -> None:
         self.key_map = key_map
         self.note_list = note_list
         self.group_list: list[PlayableGroup] = []
         self.find_groups()
+        self.moves: list[int] = [0 * len(note_list)]
 
     def find_groups(self) -> None:
         temp_group = PlayableGroup()
@@ -292,6 +358,23 @@ class PlayableGroupList:
             previous_group = groups[i]
 
 
+    def find_moves(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        temp = ""
+        for playable in self.group_list:
+            temp += str(playable) + "\n"
+        return temp
+     
+    def __repr__(self) -> str:
+        temp = ""
+        for playable in self.group_list:
+            temp += repr(playable) + "\n"
+        return temp
+
+
+
 if __name__ == "__main__":
     import os
     from constants import Constants
@@ -325,14 +408,6 @@ if __name__ == "__main__":
         group.find_freed_points()
 
     print(group_list)
-
-
-"""
-            minimum_first_note = min(self.playable_group[0].possible_locations)
-            minimum_previous_note = min()
-            first_move =
-
-"""
 
 
 """
