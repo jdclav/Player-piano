@@ -38,7 +38,9 @@ class PlayableNote:
         self.duration = duration
         """The number of musicxml ticks as an integer from the start of the note to the end of the note."""
         self.midi_pitches = [midi_pitch]
-        """The group of pitches that make up this note represented by integer values equal to the midi representation."""
+        """
+        The group of pitches that make up this note represented by 
+        integer values equal to the midi representation."""
         self.velocity = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
         self.key_map = key_map
@@ -390,14 +392,29 @@ class PlayableGroup:
         return temp
 
 class PlayableGroupList:
-    def __init__(self, key_map: SolenoidIndex, note_list: PlayableNoteList) -> None:
-        self.key_map = key_map
+    def __init__(self, note_list: PlayableNoteList) -> None:
+        """
+        List containing each PlayableGroup for a given PlayableNoteList.
+
+        param note_list: PlayableNoteList that should be grouped by this object.
+        """
+        self.key_map = note_list.key_map
+        """
+        A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
+        hand positions for a giving pitch.
+        """
         self.note_list = note_list
+        """The PlayableNoteList that was grouped in this object."""
         self.group_list: list[PlayableGroup] = []
+        """A list of PlayableGroups based on the note_list."""
         self.find_groups()
         self.moves: list[int] = [0 * len(note_list)]
+        """Unused"""
 
     def find_groups(self) -> None:
+        """
+        Find the PlayableGroups from the note_list
+        """
         temp_group = PlayableGroup()
 
         for note in self.note_list:
@@ -411,6 +428,9 @@ class PlayableGroupList:
         self.group_list.append(temp_group)
 
     def find_directions(self) -> None:
+        """
+        For each PlayableGroup in this object determine the in and out direction for each group.
+        """
         previous_group: PlayableGroup = PlayableGroup()
         groups = self.group_list
 
@@ -438,6 +458,8 @@ class PlayableGroupList:
 
 
     def find_moves(self) -> None:
+        """TODO Not used
+        """
         pass
 
     def __str__(self) -> str:
@@ -454,9 +476,24 @@ class PlayableGroupList:
 
 class PlayableGroupCluster:
     def __init__(self) -> None:
+        """
+        Contains a cluster of PlayableGroups that exist within a general direction. This means the first and last group
+        will have either no direction for in/out or the same direction for both and every other group will have the same 
+        in direction and the same out direction as each other. Groups within a cluster should have their optimal 
+        movement determined within the cluster.
+        """
         pass
 
     def add_group(self, new_group: PlayableGroup) -> None:
+        """
+        Attempt to add a group to the current cluster. If the group is an edge group (Same in/out direction) or
+        an end group (first or last group) return a TODO otherwise return TODO.
+
+        param new_group: A PlayableGroup that is intended to be added to the group."
+
+        return: An interger value that represents whether the note can be added to the 
+        current group. 
+        """
         pass
 
 
@@ -482,7 +519,7 @@ if __name__ == "__main__":
 
     note_list = PlayableNoteList(key_map, first_staff)
 
-    group_list = PlayableGroupList(key_map, note_list)
+    group_list = PlayableGroupList(note_list)
 
     group_list.find_directions()
 
