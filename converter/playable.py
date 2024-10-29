@@ -1,9 +1,11 @@
 from solenoids import SolenoidIndex
 from musicxml import NoteList
 
+#TODO change to enum
 OUTSIDE_LOCATION = 1
 INSIDE_LOCATION = 0
 
+#TODO change to enum
 NO_DIRECTION = 0
 LEFT_DIRECTION = 1
 RIGHT_DIRECTION = 2
@@ -32,17 +34,27 @@ class PlayableNote:
         param velocity: An integer that represents the volume of the note(s) similar to midi velocity.
         """
         self.note_start = note_start
+        """The number of musicxml ticks as an integer from the piece start to beginning to play this note."""
         self.duration = duration
+        """The number of musicxml ticks as an integer from the start of the note to the end of the note."""
         self.midi_pitches = [midi_pitch]
+        """The group of pitches that make up this note represented by integer values equal to the midi representation."""
         self.velocity = velocity
+        """The volume/velocity/force the note should be played with represented as an interger."""
         self.key_map = key_map
+        """
+        A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
+        hand positions for a giving pitch.
+        """
 
         new_locations = self.key_map.playable_for_pitch(midi_pitch)
         self.possible_locations = set(
             filter(lambda item: item is not None, new_locations)
         )
+        """A set that contains every valid location for the hand that allows this note to be played."""
 
         self.default_location = min(self.possible_locations)
+        """The integer value used to represent the location of this note."""
 
     def add_pitch(self, new_midi_pitch: int) -> int:
         """
@@ -91,7 +103,13 @@ class PlayableNoteList:
         param note_list: A NoteList object containing each note for a particular staff of a musicxml part.
         """
         self.key_map = key_map
+        """
+        A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
+        hand positions for a giving pitch.
+        """
         self.playable_list: list[PlayableNote] = []
+        """The list of every note in the NoteList in the form of PlayableNotes."""
+
         self.process_list(note_list)
 
     def process_list(self, note_list: NoteList) -> None:
@@ -148,7 +166,9 @@ class PlayableGroup:
         Represents a group of PlayableNotes that can be played without any hand movement.
         """
         self.playable_group: list[PlayableNote] = []
+        """A list of Playable notes that can be played without any hand movement."""
         self.possible_locations: set[int] = []
+        """Set of values that represent each possible location of hand location for this group."""
         self.movement_directions: list[int] = [UNKNOWN_DIRECTION, UNKNOWN_DIRECTION]
         """
         Contains two values. 
@@ -158,14 +178,31 @@ class PlayableGroup:
         2: Group to the right.
         3: Not yet assigned.
         """
-        self.need_moves: list[int,] = []
+        self.need_moves: list[int] = []
+        """Unused"""
         self.freed_moves: list[int] = []
+        """Unused"""
         self.need_points: list[int, int] = []
+        """
+        Every location that movement need to take place from the previous group to allow 
+        each note to be playable and the number of keys that need to be moved before 
+        playing the current note.
+        """
         self.freed_points: list[int, int] = []
+        """
+        Every location that movement can take place to get closer to the next group and 
+        the number of keys that can be moved after the current note is played.
+        """
 
     def append(self, note: PlayableNote) -> int:
         """
+        Attempt to add a note to the current group. If the note cannot be played without 
+        movement in the current group.
 
+        param note: A playable note that is intended to be added to the group."
+
+        return: An interger value that represents whether the note can be added to the 
+        current group. 
         """
         new_locations = note.possible_locations
 
@@ -184,24 +221,51 @@ class PlayableGroup:
             return INSIDE_LOCATION
 
     def set_in_direction(self, direction: int) -> None:
+        """
+        Set the value for the direction from which the group will be entered from.
+
+        param direction: Integer value that represents the direction.
+        """
         self.movement_directions[0] = direction
 
     def set_out_direction(self, direction: int) -> None:
+        """
+        Set the value for the direction from which the group will exit from.
+
+        param direction: Integer value that represents the direction.
+        """
         self.movement_directions[1] = direction
 
-    def set_need_points(self, last_note: PlayableNote) -> None:
-        
+    def first_need_points(self, last_note: PlayableNote) -> None:
+        """TODO Does nothing useful atm.
+        Add the first need point based on the last note of the previous group.
+
+        param last_note: A PlayableNote that is the last note of the previous group.
+        """
         self.need_points.insert(0, [0,0])
 
-    def set_freed_points(self, next_note: PlayableNote) -> None:
+    def last_freed_points(self, next_note: PlayableNote) -> None:
+        """TODO Does nothing useful atm.
+        Add the last freed point based on the first note of the next group.
+
+        param last_note: A PlayableNote that is the first note of the next group.
+        """
         self.freed_points.append([0,0])
 
     def find_default_position(self) -> int:
+        """Is this used?"""
         return min(self.possible_locations)
 
     def min_locations(self, direction: bool) -> list[int]:
         """
-        Finds the minimum location for each playable note in order.
+        Finds the minimum location for each playable note in either sort direction based 
+        on direction parameter.
+
+        param direction: The direction to sort the returned list. False ascending and 
+        true descending
+        
+        return: List of integer values of each minimum location sorted based on 
+        direction state.
         """
         locations: list[int] = []
 
@@ -216,7 +280,14 @@ class PlayableGroup:
 
     def max_locations(self, direction: bool) -> list[int]:
         """
-        Finds the maximum location for each playable note in order.
+        Finds the maximum location for each playable note in either sort direction based 
+        on direction parameter.
+
+        param direction: The direction to sort the returned list. False ascending and 
+        true descending
+        
+        return: List of integer values of each maximum location sorted based on 
+        direction state.
         """
         locations: list[int] = []
 
@@ -230,6 +301,11 @@ class PlayableGroup:
         return unique_locations
 
     def find_need_points(self) -> None:
+        """TODO Might not be fully functioning. Check if need_moves is needed.
+        Find each point that the group requires a move when coming from the previous 
+        group other than the first move.
+        """
+
         in_direction = self.movement_directions[0]
 
         self.need_moves = [0] * len(self.playable_group)
@@ -264,6 +340,9 @@ class PlayableGroup:
             raise (TypeError("Direction no specified."))
 
     def find_freed_points(self) -> None:
+        """TODO Might not be fully functioning. Check if freed_moves is needed.
+        Find each point that the group allows movement towards the next group.
+        """
         out_direction = self.movement_directions[1]
 
         self.freed_moves = [0] * len(self.playable_group)
@@ -373,6 +452,12 @@ class PlayableGroupList:
             temp += repr(playable) + "\n"
         return temp
 
+class PlayableGroupCluster:
+    def __init__(self) -> None:
+        pass
+
+    def add_group(self, new_group: PlayableGroup) -> None:
+        pass
 
 
 if __name__ == "__main__":
