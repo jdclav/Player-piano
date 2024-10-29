@@ -101,6 +101,11 @@ class MusicXML:
         """List of each unique part."""
 
     def find_part_ids(self) -> list[PartInfo]:
+        """
+        Based on the musicxml provided in the object find each unique part.
+
+        return: Returns the unique parts as a list of PartInfos.
+        """
         temp: list[str] = []
         partlist_element = self.root.find("part-list")
         part_list = partlist_element.findall(".//score-part")
@@ -112,10 +117,23 @@ class MusicXML:
         return temp
 
     def find_part(self, part_id: str) -> LE._Element:
+        """Find the musicxml part associated with the given part id.
+        
+        param part_id: A string containing the part id of the desired part.
+        
+        return: Returns the xml element of the part.
+        """
         part = self.root.find(f".//part[@id='{part_id}']")
         return part
 
     def find_staff_count(self, part_id: str) -> int:
+        """
+        Finds the total numberof staves for a given part id.
+
+        param part_id: A string containing the part id of the desired part.
+
+        return: Returns an interger value representing the total number of staves.
+        """
         temp: list[str] = []
         matched_part = self.find_part(part_id)
         measures = matched_part.findall(".//note/staff")
@@ -125,17 +143,15 @@ class MusicXML:
         staff_count = len(temp)
         if staff_count == 0:
             staff_count = 1
-        return staff_count
-
-    def division_ms(divisions: int, tempo: int, beat_type: int) -> int:
-        quarters_per_beat = 4 / beat_type
-        quarters_per_minute = tempo * quarters_per_beat
-        divisions_per_minute = quarters_per_minute * divisions
-        us_per_minute = 1e6 * 60
-        us_per_divistion = int(us_per_minute / float(divisions_per_minute))
-        return us_per_divistion
+        return staff_count    
+        
 
     def us_per_division(self, part_id: str) -> None:
+        """
+        Determines the microseconds per musicxml division as an integer.
+
+        param part_id: A string value for the part id.
+        """
         part = self.root.findall(".//*[@id='" + part_id + "']")[1]
         divisions = int(part.find(".//divisions").text)
         beat_type = int(part.find(".//beat-type").text)
@@ -147,9 +163,20 @@ class MusicXML:
             # TODO Randomish default if no tempo is defined
             tempo = 120
 
-        self.us_per_div = self.division_ms(divisions, tempo, beat_type)
+        quarters_per_beat = 4 / beat_type
+        quarters_per_minute = tempo * quarters_per_beat
+        divisions_per_minute = quarters_per_minute * divisions
+        us_per_minute = 1e6 * 60
+        self.us_per_div = int(us_per_minute / float(divisions_per_minute))
 
     def find_velocity(self, part_id: str) -> int:
+        """TODO This assumes the entire part has the same velocity/volume which is not always true.
+        Find the velocity/volume for a given part.
+
+        param part_id: A string value for the part id.
+
+        return: Returns an integer value of the musicxml volume.
+        """
         partlist_element = self.root.find("part-list")
         part_list = partlist_element.findall(".//score-part")
         for item in part_list:
@@ -163,6 +190,13 @@ class MusicXML:
         return MISSING_VOLUME
 
     def generate_note_list(self, part_info: PartInfo) -> list[XMLNoteList]:
+        """
+        For a given part_info generate a list of XMLNoteLists for each staff contained in a part.
+
+        param part_info: A PartInfo object containing the part id and the number of staves for that part.
+
+        return: Returns a list of XMLNoteList where each XMLNoteList is for an individual staff.
+        """
         part = self.find_part(part_info.id)
         notes = list[LE._Element](part.xpath(".//note | .//backup"))
         notes_list: list[XMLNoteList] = []
@@ -231,6 +265,13 @@ class MusicXML:
 
 
 def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
+    """
+    Converts a string representation of a pitch to its midi equivilent.
+
+    param letter: The letter of the pitch as a string.
+    param octave: The octave of the pitch as an integer.
+    param alter: An integer which represents if the note is a sharp or flat.
+    """
     note_offset = ord(letter) - ord("C")
     octave_offset = (octave + BASE_OCTAVE_OFFSET) * NOTES_IN_OCTAVE
 
