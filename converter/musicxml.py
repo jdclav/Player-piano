@@ -18,23 +18,51 @@ class XMLNote:
         velocity: int,
         modifiers: list[str] = [],
     ) -> None:
+        """
+        Object that represents a single note/chord from an musicxml file.
+
+        param note_start: An integer that represents the start time of the note(s) in terms of musicXML ticks.
+        param duration: An integer that represents the total duration the note(s) in terms of musicXML ticks.
+        param midi_pitch: An integer that represents the pitch of the note equivilent to the midi pitch number.
+        param velocity: An integer that represents the volume of the note(s) similar to midi velocity.
+        param modifiers: TODO
+        """
         self.note_start = note_start
+        """The number of musicxml ticks as an integer from the piece start to beginning to play this note."""
         self.duration = duration
+        """The number of musicxml ticks as an integer from the start of the note to the end of the note."""
         self.midi_pitch = midi_pitch
-        self.modifiers = modifiers
+        """
+        The group of pitches that make up this note represented by 
+        integer values equal to the midi representation.
+        """        
         self.velocity = velocity
+        """The volume/velocity/force the note should be played with represented as an interger."""
+        self.modifiers = modifiers
+        """TODO"""
+        
 
     def __str__(self) -> str:
         return f"Start: {self.note_start}, Duration: {self.duration}, Midi_Pitch: {self.midi_pitch}, Velocity: {self.velocity}"
 
 
-class NoteList:
+class XMLNoteList:
     def __init__(self, part_id: str, staff_number: int) -> None:
+        """
+        A list of XMLNotes for a given part id and staff number.
+
+        param part_id: The musicxml part id as a string.
+        param staff_number: The musicxml staff number for a given part id as an integer.
+        """
         self.notes: list[XMLNote] = []
+        """List of XMLNotes for the part id for a specific staff number."""
         self.part_id = part_id
+        """Musicxml part id."""
         self.staff_number = staff_number
+        """Musicxml staff number."""
 
     def append(self, XMLNote) -> None:
+        """Append a XMLNote to notes."""
         self.notes.append(XMLNote)
 
     def __str__(self) -> str:
@@ -49,16 +77,28 @@ class NoteList:
 
 class PartInfo:
     def __init__(self, id: str, staff_count: int) -> None:
+        """
+        Object that stores all the information needed to identify the unique part.
+        """
         self.id = id
         self.staff_count = staff_count
 
 
 class MusicXML:
     def __init__(self, path: str) -> None:
+        """
+        Object that reads in a musicxml file and finds all the unique parts.
+
+        param path: String path for the file that should be used.
+        """
         self.file = LE.parse(path)
+        """The parsed file."""
         self.root = self.file.getroot()
+        """The root element from the parsed file."""
         self.parts = self.root.findall("part")
+        """Each part under the root element."""
         self.part_ids = self.find_part_ids()
+        """List of each unique part."""
 
     def find_part_ids(self) -> list[PartInfo]:
         temp: list[str] = []
@@ -122,12 +162,12 @@ class MusicXML:
         # TODO Maybe raise an exception. Ideally if volume is missing that can be selected by user.
         return MISSING_VOLUME
 
-    def generate_note_list(self, part_info: PartInfo) -> list[NoteList]:
+    def generate_note_list(self, part_info: PartInfo) -> list[XMLNoteList]:
         part = self.find_part(part_info.id)
         notes = list[LE._Element](part.xpath(".//note | .//backup"))
-        notes_list: list[NoteList] = []
+        notes_list: list[XMLNoteList] = []
         for i in range(0, part_info.staff_count):
-            new_note_list = NoteList(part_info.id, i + 1)
+            new_note_list = XMLNoteList(part_info.id, i + 1)
             notes_list.append(new_note_list)
         note_start = 0
         note_duration = 0

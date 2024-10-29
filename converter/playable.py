@@ -1,5 +1,5 @@
 from solenoids import SolenoidIndex
-from musicxml import NoteList
+from musicxml import XMLNoteList
 
 #TODO change to enum
 OUTSIDE_LOCATION = 1
@@ -40,7 +40,8 @@ class PlayableNote:
         self.midi_pitches = [midi_pitch]
         """
         The group of pitches that make up this note represented by 
-        integer values equal to the midi representation."""
+        integer values equal to the midi representation.
+        """
         self.velocity = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
         self.key_map = key_map
@@ -95,14 +96,14 @@ class PlayableNote:
 
 
 class PlayableNoteList:
-    def __init__(self, key_map: SolenoidIndex, note_list: NoteList) -> None:
+    def __init__(self, key_map: SolenoidIndex, note_list: XMLNoteList) -> None:
         """
-        Takes in a NoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
+        Takes in a XMLNoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
         to chords.
         
         param key_map: A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
                        hand positions for a giving pitch.
-        param note_list: A NoteList object containing each note for a particular staff of a musicxml part.
+        param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
         self.key_map = key_map
         """
@@ -110,15 +111,15 @@ class PlayableNoteList:
         hand positions for a giving pitch.
         """
         self.playable_list: list[PlayableNote] = []
-        """The list of every note in the NoteList in the form of PlayableNotes."""
+        """The list of every note in the XMLNoteList in the form of PlayableNotes."""
 
         self.process_list(note_list)
 
-    def process_list(self, note_list: NoteList) -> None:
+    def process_list(self, note_list: XMLNoteList) -> None:
         """
         Processes the note_list into a list of PlayableNotes.
 
-        param note_list: A NoteList object containing each note for a particular staff of a musicxml part.
+        param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
         for note in note_list:
             if self.playable_list:
