@@ -280,21 +280,22 @@ class PlayableGroup:
         """
         self.absolute_freed = distance
 
-    def first_need_points(self, last_note: PlayableNote) -> None:
+    def first_need_point(self, distance: int) -> None:
         """
         Add the first need point based on the last note of the previous group.
 
-        param last_note: A PlayableNote that is the last note of the previous group.
+        param distance: An integer representing distance needed to travel to this group from the last group.
         """
-        self.need_points.insert(0, [0, 0])
+        self.need_points.insert(0, [0, distance])
 
-    def last_freed_points(self, next_note: PlayableNote) -> None:
+    def last_freed_point(self, distance: int) -> None:
         """TODO Does nothing useful atm.
         Add the last freed point based on the first note of the next group.
 
-        param last_note: A PlayableNote that is the first note of the next group.
+        param distance: An integer representing distance this group can travel to the next group. 
         """
-        self.freed_points.append([0, 0])
+        group_length = len(self.playable_group)
+        self.freed_points.append([group_length - 1, distance])
 
     def find_default_position(self) -> int:
         """Is this used?"""
@@ -345,12 +346,14 @@ class PlayableGroup:
         return unique_locations
 
     def find_need_points(self) -> None:
-        """TODO Might not be fully functioning. Check if need_moves is needed.
+        """
         Find each point that the group requires a move when coming from the previous
         group other than the first move.
         """
 
         in_direction = self.movement_directions[0]
+        remaining_need = abs(self.absolute_need)
+        temp_movement = 0
 
         if in_direction == NO_DIRECTION:
             return
@@ -358,34 +361,47 @@ class PlayableGroup:
         if in_direction == LEFT_DIRECTION:
             ordered_locations = self.min_locations(True)
             current_group = self.playable_group
-            while len(ordered_locations) > 0 and len(current_group) > 0:
+            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
                 target_location = ordered_locations.pop(0)
+                temp_movement += target_location - ordered_locations[0]
                 for i, note in enumerate(current_group):
                     min_location = min(note.possible_locations)
                     if min_location == target_location:
-                        self.need_points.append([i, target_location])
+                        self.need_points.append([i, temp_movement])
                         current_group = current_group[0:i]
+                        remaining_need -= abs(temp_movement)
+                        temp_movement = 0
                         break
+            self.first_need_point(remaining_need)
+                
 
         elif in_direction == RIGHT_DIRECTION:
             ordered_locations = self.max_locations(False)
             current_group = self.playable_group
-            while len(ordered_locations) > 0 and len(current_group) > 0:
+            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
                 target_location = ordered_locations.pop(0)
+                temp_movement += target_location - ordered_locations[0]
                 for i, note in enumerate(current_group):
                     max_location = max(note.possible_locations)
                     if max_location == target_location:
-                        self.need_points.append([i, target_location])
+                        self.need_points.append([i, temp_movement])
                         current_group = current_group[0:i]
+                        remaining_need -= abs(temp_movement)
+                        temp_movement = 0
                         break
+            self.first_need_point(-1 * remaining_need)
         else:
             raise (TypeError("Direction no specified."))
+        
+        
 
     def find_freed_points(self) -> None:
-        """TODO Might not be fully functioning. Check if freed_moves is needed.
-        Find each point that the group allows movement towards the next group.
+        """
+        Find each point that the group allows movement towards the next group..
         """
         out_direction = self.movement_directions[1]
+        remaining_freed = abs(self.absolute_freed)
+        temp_movement = 0
 
         if out_direction == NO_DIRECTION:
             return
@@ -393,28 +409,38 @@ class PlayableGroup:
         if out_direction == LEFT_DIRECTION:
             ordered_locations = self.max_locations(True)
             current_group = list(reversed(self.playable_group))
-            while len(ordered_locations) > 1 and len(current_group) > 1:
+            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
                 target_location = ordered_locations.pop(0)
+                temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
                     min_location = max(note.possible_locations)
                     if min_location == target_location:
-                        self.freed_points.append([i, target_location])
+                        self.freed_points.append([i, temp_movement])
                         current_group = current_group[0:i]
+                        remaining_freed -= abs(temp_movement)
+                        temp_movement = 0
                         break
+            self.last_freed_point(-1 * remaining_freed)
 
         elif out_direction == RIGHT_DIRECTION:
             ordered_locations = self.min_locations(False)
             current_group = list(reversed(self.playable_group))
-            while len(ordered_locations) > 1 and len(current_group) > 1:
+            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
                 target_location = ordered_locations.pop(0)
+                temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
                     max_location = min(note.possible_locations)
                     if max_location == target_location:
-                        self.freed_points.append([i, target_location])
+                        self.freed_points.append([i, temp_movement])
                         current_group = current_group[0:i]
+                        remaining_freed -= abs(temp_movement)
+                        temp_movement = 0
                         break
+            self.last_freed_point(remaining_freed)
         else:
             raise (TypeError("Direction no specified."))
+        
+        
 
     def __str__(self) -> str:
         temp = ""
@@ -555,12 +581,15 @@ class PlayableGroupCluster:
     def find_absolute_need(
         self,
         current_direction: int,
+        previous_width: int,
         current_locations: set[int],
         previous_locations: set[int],
     ) -> int:
-        """TODO This isn't right
+        """
         Find the absolute need for a given current location set based on a previous location set.
 
+        param current_direction: An integer that represents the in direction the current group.
+        param previous_width: An integer that represents the previous groups possible location width.
         param current_locations: A set of integers that represent a current groups possible locations.
         param previous_locations: A set of integers that represent a previous groups possible locations.
 
@@ -573,7 +602,7 @@ class PlayableGroupCluster:
         else:
             raise ValueError("All groups by here should have directions assigned.")
 
-        return distance
+        return distance + previous_width
 
     def find_absolute_freed(
         self,
@@ -600,10 +629,11 @@ class PlayableGroupCluster:
 
     def absolutes(self) -> None:
         """
-        Finds the absolute need and freed groups for the entire cluster.
+        Finds the absolute need and freed distances for the entire cluster.
         """
         previous_group: PlayableGroup = PlayableGroup()
         groups = self.cluster
+        previous_width = 0
         for i in range(0, len(groups)):
             if i != 0:
                 current_locations = groups[i].possible_locations
@@ -611,40 +641,17 @@ class PlayableGroupCluster:
                 current_group_direction = groups[i].movement_directions[0]
 
                 need_distance = self.find_absolute_need(
-                    current_group_direction, current_locations, previous_locations
+                    current_group_direction, previous_width, current_locations, previous_locations
                 )
                 freed_distance = self.find_absolute_freed(
                     current_group_direction, current_locations, previous_locations
                 )
 
                 groups[i].set_absolute_need(need_distance)
-
                 previous_group.set_absolute_freed(freed_distance)
+                previous_width = len(current_locations)
 
-            previous_group = group
-
-    def find_edge_moves(self) -> None:
-        """
-        Finds and sets the first need and last freed points of the clustered groups.
-        The first group will only have the freed point set and the last group will only have its
-        need point set.
-        """
-        previous_group: PlayableGroup = PlayableGroup()
-        groups = self.cluster
-
-        for i in range(len(groups)):
-            if i != 0:
-                if groups[i].movement_directions[0] == LEFT_DIRECTION:
-                    current_first_note = groups[i].playable_group[0]
-                    previous_last_note = previous_group.playable_group[-1]
-                    distance = (
-                        current_first_note.min_position()
-                        - previous_last_note.max_position()
-                    )
-
-            previous_group = group
-
-        pass
+            previous_group = groups[i]
 
 
 if __name__ == "__main__":
@@ -673,13 +680,16 @@ if __name__ == "__main__":
 
     group_list.find_directions()
 
+    group_list.find_clusters()
+
+    for cluster in group_list.cluster_list:
+        cluster.absolutes()
+
     for group in group_list.group_list:
         group.find_need_points()
-
+    
     for group in group_list.group_list:
         group.find_freed_points()
-
-    group_list.find_clusters()
 
     print(group_list)
 
