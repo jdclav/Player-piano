@@ -1,11 +1,11 @@
 from solenoids import SolenoidIndex
 from musicxml import XMLNoteList
 
-#TODO change to enum
+# TODO change to enum
 OUTSIDE_LOCATION = 1
 INSIDE_LOCATION = 0
 
-#TODO change to enum
+# TODO change to enum
 NO_DIRECTION = 0
 LEFT_DIRECTION = 1
 RIGHT_DIRECTION = 2
@@ -80,6 +80,22 @@ class PlayableNote:
         else:
             return OUTSIDE_LOCATION
 
+    def max_position(self) -> int:
+        """
+        Returns the maximum position for this PlayableNote.
+
+        return: Integer that represents the maximum possible_location.
+        """
+        return max(self.possible_locations)
+
+    def min_position(self) -> int:
+        """
+        Returns the minimum position for this PlayableNote.
+
+        return: Integer that represents the minimum possible_location.
+        """
+        return min(self.possible_locations)
+
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
 
@@ -90,7 +106,7 @@ class PlayableNote:
         temp_str += f"Velocity: {self.velocity}, "
         temp_str += f"Possible Locations: {self.possible_locations}"
         return temp_str
-    
+
     def __repr__(self) -> str:
         return f"{self.note_start}, {self.duration}, {self.midi_pitches}, {self.velocity, {self.possible_locations}}"
 
@@ -100,7 +116,7 @@ class PlayableNoteList:
         """
         Takes in a XMLNoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
         to chords.
-        
+
         param key_map: A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
                        hand positions for a giving pitch.
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
@@ -155,7 +171,7 @@ class PlayableNoteList:
         for playable in self.playable_list:
             temp += str(playable) + "\n"
         return temp
-    
+
     def __repr__(self) -> str:
         temp = ""
         for playable in self.playable_list:
@@ -181,10 +197,15 @@ class PlayableGroup:
         2: Group to the right.
         3: Not yet assigned.
         """
-        self.need_moves: list[int] = []
-        """Unused"""
-        self.freed_moves: list[int] = []
-        """Unused"""
+        self.absolute_need: int = 0
+        """The total moves needed from a previous group to this group."""
+        self.absolute_freed: int = 0
+        """The total moves that can be freed in this group to the next group."""
+        self.moves: list[int] = []
+        """
+        For each item in the playable_group this will have a value to represent the total movement 
+        that takes place after playing the note at the same index.
+        """
         self.need_points: list[int, int] = []
         """
         Every location that movement need to take place from the previous group to allow 
@@ -199,13 +220,13 @@ class PlayableGroup:
 
     def append(self, note: PlayableNote) -> int:
         """
-        Attempt to add a note to the current group. If the note cannot be played without 
+        Attempt to add a note to the current group. If the note cannot be played without
         movement in the current group.
 
         param note: A playable note that is intended to be added to the group."
 
-        return: An interger value that represents whether the note can be added to the 
-        current group. 
+        return: An interger value that represents whether the note can be added to the
+        current group.
         """
         new_locations = note.possible_locations
 
@@ -223,6 +244,9 @@ class PlayableGroup:
             self.playable_group.append(note)
             return INSIDE_LOCATION
 
+    def append_move(self, move_value: int) -> None:
+        self.moves.append(move_value)
+
     def set_in_direction(self, direction: int) -> None:
         """
         Set the value for the direction from which the group will be entered from.
@@ -239,13 +263,30 @@ class PlayableGroup:
         """
         self.movement_directions[1] = direction
 
+    def set_absolute_need(self, distance: int) -> None:
+        """
+        Set the value for the absolute movement needed to get to this group from
+        the previous.
+
+        param distance: An integer value that represents distance in keys.
+        """
+        self.absolute_need = distance
+
+    def set_absolute_freed(self, distance: int) -> None:
+        """
+        Set the value for the absolute movement this group can perform to the next group
+
+        param distance: An integer value that represents distance in keys.
+        """
+        self.absolute_freed = distance
+
     def first_need_points(self, last_note: PlayableNote) -> None:
-        """TODO Does nothing useful atm.
+        """
         Add the first need point based on the last note of the previous group.
 
         param last_note: A PlayableNote that is the last note of the previous group.
         """
-        self.need_points.insert(0, [0,0])
+        self.need_points.insert(0, [0, 0])
 
     def last_freed_points(self, next_note: PlayableNote) -> None:
         """TODO Does nothing useful atm.
@@ -253,7 +294,7 @@ class PlayableGroup:
 
         param last_note: A PlayableNote that is the first note of the next group.
         """
-        self.freed_points.append([0,0])
+        self.freed_points.append([0, 0])
 
     def find_default_position(self) -> int:
         """Is this used?"""
@@ -261,13 +302,13 @@ class PlayableGroup:
 
     def min_locations(self, direction: bool) -> list[int]:
         """
-        Finds the minimum location for each playable note in either sort direction based 
+        Finds the minimum location for each playable note in either sort direction based
         on direction parameter.
 
-        param direction: The direction to sort the returned list. False ascending and 
+        param direction: The direction to sort the returned list. False ascending and
         true descending
-        
-        return: List of integer values of each minimum location sorted based on 
+
+        return: List of integer values of each minimum location sorted based on
         direction state.
         """
         locations: list[int] = []
@@ -283,13 +324,13 @@ class PlayableGroup:
 
     def max_locations(self, direction: bool) -> list[int]:
         """
-        Finds the maximum location for each playable note in either sort direction based 
+        Finds the maximum location for each playable note in either sort direction based
         on direction parameter.
 
-        param direction: The direction to sort the returned list. False ascending and 
+        param direction: The direction to sort the returned list. False ascending and
         true descending
-        
-        return: List of integer values of each maximum location sorted based on 
+
+        return: List of integer values of each maximum location sorted based on
         direction state.
         """
         locations: list[int] = []
@@ -305,13 +346,11 @@ class PlayableGroup:
 
     def find_need_points(self) -> None:
         """TODO Might not be fully functioning. Check if need_moves is needed.
-        Find each point that the group requires a move when coming from the previous 
+        Find each point that the group requires a move when coming from the previous
         group other than the first move.
         """
 
         in_direction = self.movement_directions[0]
-
-        self.need_moves = [0] * len(self.playable_group)
 
         if in_direction == NO_DIRECTION:
             return
@@ -348,8 +387,6 @@ class PlayableGroup:
         """
         out_direction = self.movement_directions[1]
 
-        self.freed_moves = [0] * len(self.playable_group)
-
         if out_direction == NO_DIRECTION:
             return
 
@@ -379,18 +416,18 @@ class PlayableGroup:
         else:
             raise (TypeError("Direction no specified."))
 
-
     def __str__(self) -> str:
         temp = ""
         for playable in self.playable_group:
             temp += str(playable) + "\n"
         return temp
-     
+
     def __repr__(self) -> str:
         temp = ""
         for playable in self.playable_group:
             temp += repr(playable) + "\n"
         return temp
+
 
 class PlayableGroupList:
     def __init__(self, note_list: PlayableNoteList) -> None:
@@ -404,13 +441,12 @@ class PlayableGroupList:
         A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
         hand positions for a giving pitch.
         """
+        self.cluster_list: list[PlayableGroupCluster] = []
         self.note_list = note_list
         """The PlayableNoteList that was grouped in this object."""
         self.group_list: list[PlayableGroup] = []
         """A list of PlayableGroups based on the note_list."""
         self.find_groups()
-        self.moves: list[int] = [0 * len(note_list)]
-        """Unused"""
 
     def find_groups(self) -> None:
         """
@@ -457,10 +493,22 @@ class PlayableGroupList:
 
             previous_group = groups[i]
 
+    def find_clusters(self) -> None:
+        """
+        Find each PlayableGroupCluster based on the stored group_list.
+        """
+        temp_cluster = PlayableGroupCluster()
+        for group in self.group_list:
+            if temp_cluster.add_group(group) == 1:
+                self.cluster_list.append(temp_cluster)
+                temp_cluster = PlayableGroupCluster()
+
+                if len(self.group_list) > 1:
+                    temp_cluster.add_group(group)
 
     def find_moves(self) -> None:
-        """TODO Not used
-        """
+        """TODO Not used"""
+
         pass
 
     def __str__(self) -> str:
@@ -468,22 +516,23 @@ class PlayableGroupList:
         for playable in self.group_list:
             temp += str(playable) + "\n"
         return temp
-     
+
     def __repr__(self) -> str:
         temp = ""
         for playable in self.group_list:
             temp += repr(playable) + "\n"
         return temp
 
+
 class PlayableGroupCluster:
     def __init__(self) -> None:
         """
         Contains a cluster of PlayableGroups that exist within a general direction. This means the first and last group
-        will have either no direction for in/out or the same direction for both and every other group will have the same 
-        in direction and the same out direction as each other. Groups within a cluster should have their optimal 
+        will have either no direction for in/out or the same direction for both and every other group will have the same
+        in direction and the same out direction as each other. Groups within a cluster should have their optimal
         movement determined within the cluster.
         """
-        pass
+        self.cluster: list[PlayableGroup] = []
 
     def add_group(self, new_group: PlayableGroup) -> None:
         """
@@ -492,9 +541,109 @@ class PlayableGroupCluster:
 
         param new_group: A PlayableGroup that is intended to be added to the group."
 
-        return: An interger value that represents whether the note can be added to the 
-        current group. 
+        return: An interger value that represents whether the note can be added to the
+        current group.
         """
+        self.cluster.append(new_group)
+        if new_group.movement_directions[1] == 0:
+            return 1
+        elif new_group.movement_directions[0] == new_group.movement_directions[1]:
+            return 1
+        else:
+            return 0
+
+    def find_absolute_need(
+        self,
+        current_direction: int,
+        current_locations: set[int],
+        previous_locations: set[int],
+    ) -> int:
+        """TODO This isn't right
+        Find the absolute need for a given current location set based on a previous location set.
+
+        param current_locations: A set of integers that represent a current groups possible locations.
+        param previous_locations: A set of integers that represent a previous groups possible locations.
+
+        return: Returns and integer value as a distance of keys.
+        """
+        if current_direction == LEFT_DIRECTION:
+            distance = min(current_locations) - max(previous_locations)
+        elif current_direction == RIGHT_DIRECTION:
+            distance = max(current_locations) - min(previous_locations)
+        else:
+            raise ValueError("All groups by here should have directions assigned.")
+
+        return distance
+
+    def find_absolute_freed(
+        self,
+        current_direction: int,
+        current_locations: set[int],
+        previous_locations: set[int],
+    ) -> int:
+        """
+        Find the absolute freed for a previous current location set based on a current location set.
+
+        param current_locations: A set of integers that represent a current groups possible locations.
+        param previous_locations: A set of integers that represent a previous groups possible locations.
+
+        return: Returns and integer value as a distance of keys.
+        """
+        if current_direction == LEFT_DIRECTION:
+            distance = min(current_locations) - min(previous_locations)
+        elif current_direction == RIGHT_DIRECTION:
+            distance = max(current_locations) - max(previous_locations)
+        else:
+            raise ValueError("All groups by here should have directions assigned.")
+
+        return distance
+
+    def absolutes(self) -> None:
+        """
+        Finds the absolute need and freed groups for the entire cluster.
+        """
+        previous_group: PlayableGroup = PlayableGroup()
+        groups = self.cluster
+        for i in range(0, len(groups)):
+            if i != 0:
+                current_locations = groups[i].possible_locations
+                previous_locations = previous_group.possible_locations
+                current_group_direction = groups[i].movement_directions[0]
+
+                need_distance = self.find_absolute_need(
+                    current_group_direction, current_locations, previous_locations
+                )
+                freed_distance = self.find_absolute_freed(
+                    current_group_direction, current_locations, previous_locations
+                )
+
+                groups[i].set_absolute_need(need_distance)
+
+                previous_group.set_absolute_freed(freed_distance)
+
+            previous_group = group
+
+    def find_edge_moves(self) -> None:
+        """
+        Finds and sets the first need and last freed points of the clustered groups.
+        The first group will only have the freed point set and the last group will only have its
+        need point set.
+        """
+        previous_group: PlayableGroup = PlayableGroup()
+        groups = self.cluster
+
+        for i in range(len(groups)):
+            if i != 0:
+                if groups[i].movement_directions[0] == LEFT_DIRECTION:
+                    current_first_note = groups[i].playable_group[0]
+                    previous_last_note = previous_group.playable_group[-1]
+                    distance = (
+                        current_first_note.min_position()
+                        - previous_last_note.max_position()
+                    )
+
+            previous_group = group
+
         pass
 
 
@@ -529,6 +678,8 @@ if __name__ == "__main__":
 
     for group in group_list.group_list:
         group.find_freed_points()
+
+    group_list.find_clusters()
 
     print(group_list)
 
