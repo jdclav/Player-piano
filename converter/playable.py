@@ -11,7 +11,6 @@ LEFT_DIRECTION = 1
 RIGHT_DIRECTION = 2
 UNKNOWN_DIRECTION = 3
 
-
 class PlayableNote:
     def __init__(
         self,
@@ -212,7 +211,7 @@ class PlayableGroup:
         each note to be playable and the number of keys that need to be moved before 
         playing the current note.
         """
-        self.freed_points: list[int, int] = []
+        self.freed_points: list[list[int, int]] = []
         """
         Every location that movement can take place to get closer to the next group and 
         the number of keys that can be moved after the current note is played.
@@ -288,6 +287,13 @@ class PlayableGroup:
         """
         self.need_points.insert(0, [0, distance])
 
+
+        group_length = len(self.playable_group)
+        if(self.freed_points[-1][0] == group_length - 1):
+            self.freed_points[-1][1] += distance
+        else:
+            self.freed_points.append([group_length - 1, distance])
+
     def last_freed_point(self, distance: int) -> None:
         """TODO Does nothing useful atm.
         Add the last freed point based on the first note of the next group.
@@ -295,7 +301,10 @@ class PlayableGroup:
         param distance: An integer representing distance this group can travel to the next group. 
         """
         group_length = len(self.playable_group)
-        self.freed_points.append([group_length - 1, distance])
+        if(self.freed_points[-1][0] == group_length - 1):
+            self.freed_points[-1][1] += distance
+        else:
+            self.freed_points.append([group_length - 1, distance])
 
     def find_default_position(self) -> int:
         """Is this used?"""
@@ -344,6 +353,22 @@ class PlayableGroup:
         unique_locations.sort(reverse=direction)
 
         return unique_locations
+    
+    def group_split(self, group: list[PlayableNote], element: int, direction: int) -> list[list[PlayableNote]]:
+        if direction == LEFT_DIRECTION:
+            if max(group[-1].possible_locations) == element:
+                return [group, []]
+            for i, item in enumerate(group):
+                if max(item.possible_locations) == element:
+                    return [group[:i + 1], group[i + 1:]]
+        else:
+            if min(group[-1].possible_locations) == element:
+                return [group, []]
+            for i, item in enumerate(group):
+                if min(item.possible_locations) == element:
+                    return [group[:i + 1], group[i + 1:]]
+                
+            raise IndexError("Provided element does not exist in group.")
 
     def find_need_points(self) -> None:
         """
@@ -360,7 +385,7 @@ class PlayableGroup:
 
         if in_direction == LEFT_DIRECTION:
             ordered_locations = self.min_locations(True)
-            current_group = self.playable_group
+            current_group = self.playable_group.copy()
             while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
                 target_location = ordered_locations.pop(0)
                 temp_movement += target_location - ordered_locations[0]
@@ -372,12 +397,13 @@ class PlayableGroup:
                         remaining_need -= abs(temp_movement)
                         temp_movement = 0
                         break
+            self.need_points.reverse()
             self.first_need_point(remaining_need)
                 
 
         elif in_direction == RIGHT_DIRECTION:
             ordered_locations = self.max_locations(False)
-            current_group = self.playable_group
+            current_group = self.playable_group.copy()
             while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
                 target_location = ordered_locations.pop(0)
                 temp_movement += target_location - ordered_locations[0]
@@ -389,6 +415,7 @@ class PlayableGroup:
                         remaining_need -= abs(temp_movement)
                         temp_movement = 0
                         break
+            self.need_points.reverse()
             self.first_need_point(-1 * remaining_need)
         else:
             raise (TypeError("Direction no specified."))
@@ -407,15 +434,16 @@ class PlayableGroup:
             return
 
         if out_direction == LEFT_DIRECTION:
-            ordered_locations = self.max_locations(True)
+            ordered_locations = self.min_locations(True)
             current_group = list(reversed(self.playable_group))
+            group_length = len(current_group)
             while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
                 target_location = ordered_locations.pop(0)
                 temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
-                    min_location = max(note.possible_locations)
+                    min_location = min(note.possible_locations)
                     if min_location == target_location:
-                        self.freed_points.append([i, temp_movement])
+                        self.freed_points.append([group_length - i, temp_movement])
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
@@ -423,15 +451,16 @@ class PlayableGroup:
             self.last_freed_point(-1 * remaining_freed)
 
         elif out_direction == RIGHT_DIRECTION:
-            ordered_locations = self.min_locations(False)
+            ordered_locations = self.max_locations(False)
             current_group = list(reversed(self.playable_group))
+            group_length = len(current_group)
             while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
                 target_location = ordered_locations.pop(0)
                 temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
-                    max_location = min(note.possible_locations)
+                    max_location = max(note.possible_locations)
                     if max_location == target_location:
-                        self.freed_points.append([i, temp_movement])
+                        self.freed_points.append([group_length - i, temp_movement])
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
@@ -468,6 +497,7 @@ class PlayableGroupList:
         hand positions for a giving pitch.
         """
         self.cluster_list: list[PlayableGroupCluster] = []
+        """TODO"""
         self.note_list = note_list
         """The PlayableNoteList that was grouped in this object."""
         self.group_list: list[PlayableGroup] = []
@@ -559,6 +589,18 @@ class PlayableGroupCluster:
         movement determined within the cluster.
         """
         self.cluster: list[PlayableGroup] = []
+        """A list of PlayableGroups that all share a general direction."""
+        self.cluster_need: list[list[int, int]] = []
+        """
+        A list of integer pairs that contain the needs of each group in the cluster. Indexes are adjusted
+        so that group 0 note 0 is index 0 for all groups.
+        """
+        self.cluster_freed: list[int] = []
+        """
+        A list of integers that represent the freed movement at a given index of each group in the cluster. 
+        Indexes are adjusted so that group 0 note 0 is index 0 for all groups.
+        """
+        
 
     def add_group(self, new_group: PlayableGroup) -> None:
         """
@@ -653,6 +695,35 @@ class PlayableGroupCluster:
 
             previous_group = groups[i]
 
+    def find_cluster_needs(self) -> None:
+        """Find all the needed moves for this cluster and store them all in a single list."""
+
+        index_offset: int = 0
+
+        for i, group in enumerate(self.cluster):
+            if i != 0:
+                previous_group = self.cluster[i - 1]
+                index_offset += len(previous_group.playable_group)
+                self.cluster_need += [[x[0]+index_offset, x[1]] for x in group.need_points]
+
+
+
+    def find_cluster_freeds(self) -> None:
+        """Find all the needed moves for this cluster and store then in a single list for each note."""
+        index_offset: int = 0
+        total_moves: int = 0
+
+        for i, group in enumerate(self.cluster):
+            if i != len(self.cluster):
+                next_group = self.cluster[i + 1]
+                freed_list = group.freed_points.copy()
+                current_freed = freed_list.pop(0)
+                for i in range(0, len(group.playable_group)):
+                    if i == current_freed[0]:
+                        pass
+                self.cluster_need += [[x[0]+index_offset, x[1]] for x in group.need_points]
+                index_offset += len(group.playable_group)
+
 
 if __name__ == "__main__":
     import os
@@ -690,6 +761,9 @@ if __name__ == "__main__":
     
     for group in group_list.group_list:
         group.find_freed_points()
+
+    for cluster in group_list.cluster_list:
+        cluster.find_cluster_needs()
 
     print(group_list)
 
