@@ -289,10 +289,10 @@ class PlayableGroup:
 
 
         group_length = len(self.playable_group)
-        if(self.freed_points[-1][0] == group_length - 1):
-            self.freed_points[-1][1] += distance
+        if(self.need_points[-1][0] == group_length - 1):
+            self.need_points[-1][1] += distance
         else:
-            self.freed_points.append([group_length - 1, distance])
+            self.need_points.append([group_length - 1, distance])
 
     def last_freed_point(self, distance: int) -> None:
         """TODO Does nothing useful atm.
@@ -676,7 +676,9 @@ class PlayableGroupCluster:
         previous_group: PlayableGroup = PlayableGroup()
         groups = self.cluster
         previous_width = 0
+        
         for i in range(0, len(groups)):
+
             if i != 0:
                 current_locations = groups[i].possible_locations
                 previous_locations = previous_group.possible_locations
@@ -701,6 +703,7 @@ class PlayableGroupCluster:
         index_offset: int = 0
 
         for i, group in enumerate(self.cluster):
+
             if i != 0:
                 previous_group = self.cluster[i - 1]
                 index_offset += len(previous_group.playable_group)
@@ -714,15 +717,20 @@ class PlayableGroupCluster:
         total_moves: int = 0
 
         for i, group in enumerate(self.cluster):
-            if i != len(self.cluster):
-                next_group = self.cluster[i + 1]
+
+            if i != len(self.cluster) - 1:
                 freed_list = group.freed_points.copy()
                 current_freed = freed_list.pop(0)
+
                 for i in range(0, len(group.playable_group)):
+
                     if i == current_freed[0]:
-                        pass
-                self.cluster_need += [[x[0]+index_offset, x[1]] for x in group.need_points]
-                index_offset += len(group.playable_group)
+                        total_moves += current_freed[1]
+
+                        if freed_list:
+                            current_freed = freed_list.pop(0)
+
+                    self.cluster_freed.append(total_moves)
 
 
 if __name__ == "__main__":
@@ -764,6 +772,8 @@ if __name__ == "__main__":
 
     for cluster in group_list.cluster_list:
         cluster.find_cluster_needs()
+    for cluster in group_list.cluster_list:
+        cluster.find_cluster_freeds()
 
     print(group_list)
 
