@@ -152,10 +152,10 @@ class MusicXML:
 
         param part_id: A string value for the part id.
         """
-        part = self.root.findall(".//*[@id='" + part_id + "']")[1]
-        divisions = int(part.find(".//divisions").text)
-        beat_type = int(part.find(".//beat-type").text)
-        tempo_element = part.find(".//*[@tempo]")
+        matched_part = self.find_part(part_id)
+        divisions = int(matched_part.find(".//divisions").text)
+        beat_type = int(matched_part.find(".//beat-type").text)
+        tempo_element = matched_part.find(".//*[@tempo]")
 
         if tempo_element is not None:
             tempo = int(tempo_element.attrib["tempo"])
