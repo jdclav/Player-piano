@@ -163,7 +163,7 @@ class MusicXML:
             # TODO Randomish default if no tempo is defined
             tempo = 120
 
-        quarters_per_beat = 4 / beat_type
+        quarters_per_beat = 4 / 4 #beat_type
         quarters_per_minute = tempo * quarters_per_beat
         divisions_per_minute = quarters_per_minute * divisions
         us_per_minute = 1e6 * 60
