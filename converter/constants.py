@@ -38,19 +38,18 @@ class Constants:
 
             self.base_18: tuple = tuple()
             self.step_list: tuple = tuple()
-            self.__generate_base_18()
             self.__generate_step_list()
-
-    def __generate_base_18(self) -> None:
-        temp_list: list[str] = []
-        for i in range(0, 10):
-            temp_list.append(str(i))
-        for i in range(ord("A"), ord("H") + 1):
-            temp_list.append(chr(i))
-        self.base_18 = tuple(temp_list)
 
     def __generate_step_list(self) -> None:
         temp_list: list[str] = []
         for i in range(ord("A"), ord("G") + 1):
             temp_list.append(chr(i))
         self.step_list = tuple(temp_list)
+
+def base_18() -> None:
+        temp_list: list[str] = []
+        for i in range(0, 10):
+            temp_list.append(str(i))
+        for i in range(ord("A"), ord("H") + 1):
+            temp_list.append(chr(i))
+        return tuple(temp_list)
