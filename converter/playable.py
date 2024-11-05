@@ -19,6 +19,7 @@ Inital_duration = 5000
 maxSpeed = 300
 maxAccel = 3000
 
+
 def travel_time(distance, accel, velocity):
     """TODO Verify and update"""
     mAccelDistance = (velocity**2) / (2 * accel)
@@ -33,6 +34,7 @@ def travel_time(distance, accel, velocity):
     linearTime = rDistance / velocity
     totalTime = accelTime + linearTime
     return totalTime * 1000000
+
 
 class PlayableNote:
     def __init__(
@@ -120,26 +122,33 @@ class PlayableNote:
         return: Integer that represents the minimum possible_location.
         """
         return min(self.possible_locations)
-    
+
     def set_delay(self, next_start: int) -> None:
         self.next_delay = next_start - self.note_start
-    
-    def move_score(self, distance: int, us_per_tick: float, key_width: float, acceleration: float, velociy: float) -> float:
+
+    def move_score(
+        self,
+        distance: int,
+        us_per_tick: float,
+        key_width: float,
+        acceleration: float,
+        velociy: float,
+    ) -> float:
         """
-        Takes in a distance to be traveled after the note is played and returns a score based on how much it affects 
-        the note. A lower score means the note was affected less. A score of over 1 means the entered distance cannot 
+        Takes in a distance to be traveled after the note is played and returns a score based on how much it affects
+        the note. A lower score means the note was affected less. A score of over 1 means the entered distance cannot
         be traveled after playing this note.
 
         param distance: An integer value for the number of keys that need to be moved.
         param key_width: A float value that represents the width of a piano key in mm.
-        
-        return: A float value that represents the score of this potential move. A lower score is better and a score of 
+
+        return: A float value that represents the score of this potential move. A lower score is better and a score of
         over 1 means the entered distance cannot be traveled after playing this note.
         """
         distance_mm = distance * key_width
         score_time = travel_time(distance_mm, acceleration, velociy) + actuationTime
         spare_time = (self.next_delay - self.duration) * us_per_tick
-        if(score_time >= spare_time):
+        if score_time >= spare_time:
             real_score_time = score_time - spare_time
             note_time = self.duration * us_per_tick
             score = real_score_time / note_time
@@ -147,7 +156,6 @@ class PlayableNote:
         else:
             return 0
 
-    
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
 
@@ -181,7 +189,13 @@ class PlayableNoteList:
         self.playable_list: list[PlayableNote] = []
         """The list of every note in the XMLNoteList in the form of PlayableNotes."""
 
+        self.moves: list[int] = []
+        """Every move that should take place during this PlayableNoteList as a list of integers."""
+
         self.us_per_tick = 0
+        """TODO"""
+        self.locations: list[int] = []
+        """TODO"""
 
         self.process_list(note_list)
 
@@ -228,10 +242,37 @@ class PlayableNoteList:
         self.group_list.find_clusters()
         self.group_list.process_clusters()
 
+    def combine_cluster_moves(self) -> None:
+        """Combine all the cluster moves into a single list that aligns indexwise to the PlayableNoteList."""
+        for i, cluster in enumerate(self.group_list.cluster_list):
+            if i == 0:
+                self.moves = cluster.moves
+            else:
+                overlap = len(cluster.cluster[0].playable_group)
+                zip_result = zip(self.moves[-overlap:], cluster.moves[:overlap])
+                overlap_moves = [x + y for x, y in zip_result]
+                self.moves = (
+                    self.moves[:-overlap] + overlap_moves + cluster.moves[overlap:]
+                )
+
     def find_moves(self, key_width: float, acceleration: int, velocity: int) -> None:
         for cluster in self.group_list.cluster_list:
             cluster.set_cluster_list()
-            cluster.find_optimal_moves(self.us_per_tick, key_width, acceleration, velocity)
+            cluster.find_optimal_moves(
+                self.us_per_tick, key_width, acceleration, velocity
+            )
+        self.combine_cluster_moves()
+
+    def find_locations(self) -> None:
+        first_group = self.group_list.group_list[0]
+        if first_group.movement_directions[1] == RIGHT_DIRECTION:
+            current_location = max(first_group.possible_locations)
+        else:
+            current_location = min(first_group.possible_locations)
+        for move in self.moves:
+            self.locations.append(current_location)
+            current_location += move
+        pass
 
     def __iter__(self) -> list[PlayableNote]:
         return iter(self.playable_list)
@@ -358,9 +399,8 @@ class PlayableGroup:
         """
         self.need_points.insert(0, [0, distance])
 
-
         group_length = len(self.playable_group)
-        if(self.need_points[-1][0] == group_length - 1):
+        if self.need_points[-1][0] == group_length - 1:
             self.need_points[-1][1] += distance
         else:
             self.need_points.append([group_length - 1, distance])
@@ -369,10 +409,10 @@ class PlayableGroup:
         """TODO Does nothing useful atm.
         Add the last freed point based on the first note of the next group.
 
-        param distance: An integer representing distance this group can travel to the next group. 
+        param distance: An integer representing distance this group can travel to the next group.
         """
         group_length = len(self.playable_group)
-        if(self.freed_points[-1][0] == group_length - 1):
+        if self.freed_points[-1][0] == group_length - 1:
             self.freed_points[-1][1] += distance
         else:
             self.freed_points.append([group_length - 1, distance])
@@ -424,21 +464,23 @@ class PlayableGroup:
         unique_locations.sort(reverse=direction)
 
         return unique_locations
-    
-    def group_split(self, group: list[PlayableNote], element: int, direction: int) -> list[list[PlayableNote]]:
+
+    def group_split(
+        self, group: list[PlayableNote], element: int, direction: int
+    ) -> list[list[PlayableNote]]:
         if direction == LEFT_DIRECTION:
             if max(group[-1].possible_locations) == element:
                 return [group, []]
             for i, item in enumerate(group):
                 if max(item.possible_locations) == element:
-                    return [group[:i + 1], group[i + 1:]]
+                    return [group[: i + 1], group[i + 1 :]]
         else:
             if min(group[-1].possible_locations) == element:
                 return [group, []]
             for i, item in enumerate(group):
                 if min(item.possible_locations) == element:
-                    return [group[:i + 1], group[i + 1:]]
-                
+                    return [group[: i + 1], group[i + 1 :]]
+
             raise IndexError("Provided element does not exist in group.")
 
     def find_need_points(self) -> None:
@@ -457,7 +499,11 @@ class PlayableGroup:
         if in_direction == LEFT_DIRECTION:
             ordered_locations = self.min_locations(True)
             current_group = self.playable_group.copy()
-            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
+            while (
+                len(ordered_locations) > 1
+                and len(current_group) > 1
+                and remaining_need > 0
+            ):
                 target_location = ordered_locations.pop(0)
                 temp_movement += target_location - ordered_locations[0]
                 for i, note in enumerate(current_group):
@@ -470,12 +516,15 @@ class PlayableGroup:
                         break
             self.need_points.reverse()
             self.first_need_point(remaining_need)
-                
 
         elif in_direction == RIGHT_DIRECTION:
             ordered_locations = self.max_locations(False)
             current_group = self.playable_group.copy()
-            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_need > 0:
+            while (
+                len(ordered_locations) > 1
+                and len(current_group) > 1
+                and remaining_need > 0
+            ):
                 target_location = ordered_locations.pop(0)
                 temp_movement += target_location - ordered_locations[0]
                 for i, note in enumerate(current_group):
@@ -490,8 +539,6 @@ class PlayableGroup:
             self.first_need_point(-1 * remaining_need)
         else:
             raise (TypeError("Direction no specified."))
-        
-        
 
     def find_freed_points(self) -> None:
         """
@@ -508,13 +555,19 @@ class PlayableGroup:
             ordered_locations = self.min_locations(True)
             current_group = list(reversed(self.playable_group))
             group_length = len(current_group)
-            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
+            while (
+                len(ordered_locations) > 1
+                and len(current_group) > 1
+                and remaining_freed > 0
+            ):
                 target_location = ordered_locations.pop(0)
                 temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
                     min_location = min(note.possible_locations)
                     if min_location == target_location:
-                        self.freed_points.append([group_length - (i + 1), temp_movement])
+                        self.freed_points.append(
+                            [group_length - (i + 1), temp_movement]
+                        )
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
@@ -525,13 +578,19 @@ class PlayableGroup:
             ordered_locations = self.max_locations(False)
             current_group = list(reversed(self.playable_group))
             group_length = len(current_group)
-            while len(ordered_locations) > 1 and len(current_group) > 1 and remaining_freed > 0:
+            while (
+                len(ordered_locations) > 1
+                and len(current_group) > 1
+                and remaining_freed > 0
+            ):
                 target_location = ordered_locations.pop(0)
                 temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
                     max_location = max(note.possible_locations)
                     if max_location == target_location:
-                        self.freed_points.append([group_length - (i + 1), temp_movement])
+                        self.freed_points.append(
+                            [group_length - (i + 1), temp_movement]
+                        )
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
@@ -539,8 +598,6 @@ class PlayableGroup:
             self.last_freed_point(remaining_freed)
         else:
             raise (TypeError("Direction no specified."))
-        
-        
 
     def __str__(self) -> str:
         temp = ""
@@ -635,7 +692,7 @@ class PlayableGroupList:
 
     def process_clusters(self) -> None:
         """
-        Once Clusters have been found they should be processed to determine values needed by the clusters to 
+        Once Clusters have been found they should be processed to determine values needed by the clusters to
         find the optimal moves.
         """
         for cluster in self.cluster_list:
@@ -766,16 +823,18 @@ class PlayableGroupCluster:
         previous_group: PlayableGroup = PlayableGroup()
         groups = self.cluster
         previous_width = 0
-        
-        for i in range(0, len(groups)):
 
+        for i in range(0, len(groups)):
             if i != 0:
                 current_locations = groups[i].possible_locations
                 previous_locations = previous_group.possible_locations
                 current_group_direction = groups[i].movement_directions[0]
 
                 need_distance = self.find_absolute_need(
-                    current_group_direction, previous_width, current_locations, previous_locations
+                    current_group_direction,
+                    previous_width,
+                    current_locations,
+                    previous_locations,
                 )
                 freed_distance = self.find_absolute_freed(
                     current_group_direction, current_locations, previous_locations
@@ -793,9 +852,10 @@ class PlayableGroupCluster:
         index_offset: int = 0
 
         for i, group in enumerate(self.cluster):
-
             if i != 0:
-                self.cluster_need += [[x[0]+index_offset, x[1]] for x in group.need_points]
+                self.cluster_need += [
+                    [x[0] + index_offset, x[1]] for x in group.need_points
+                ]
 
             index_offset += len(group.playable_group)
 
@@ -805,29 +865,33 @@ class PlayableGroupCluster:
         total_moves: int = 0
 
         for i, group in enumerate(self.cluster):
-
             if i != len(self.cluster) - 1:
                 freed_list = group.freed_points.copy()
                 freed_item = freed_list.pop(0)
 
                 for j in range(0, len(group.playable_group)):
-                    if(j == freed_item[0]):
+                    if j == freed_item[0]:
                         total_moves += freed_item[1]
-                        if(len(freed_list) > 0):
+                        if len(freed_list) > 0:
                             freed_item = freed_list.pop(0)
 
-                    self.cluster_freed.append(total_moves)  
-                
-                extra_freed = [self.cluster_freed[-1]] * len(self.cluster[-1].playable_group)
+                    self.cluster_freed.append(total_moves)
+
+                extra_freed = [self.cluster_freed[-1]] * len(
+                    self.cluster[-1].playable_group
+                )
                 self.cluster_freed += extra_freed
 
             index_offset += len(group.playable_group)
+
     def set_cluster_list(self) -> None:
         """Fill the cluster_playable with each separate group list."""
         for group in self.cluster:
             self.cluster_playable += group.playable_group
 
-    def find_optimal_moves(self, us_per_tick: float, key_width: float, acceleration: int, velocity: int) -> None:
+    def find_optimal_moves(
+        self, us_per_tick: float, key_width: float, acceleration: int, velocity: int
+    ) -> None:
         """
         Find for the entire cluster the optimal moves for each needed move.
         """
@@ -836,24 +900,29 @@ class PlayableGroupCluster:
 
         for need in self.cluster_need:
             last_note = need[0]
+            scores: list[float] = [1.0] * len(self.cluster_playable)
             need_distance = abs(need[1])
             for i in range(1, (need_distance + 1)):
                 for j, freed in enumerate(self.cluster_freed):
-                    if(j < last_note):
-                        if(abs(freed) >= need_distance):
-                            scores[j] = self.cluster_playable[j].move_score(abs(self.moves[j]) + 1, 
-                                                                            us_per_tick, 
-                                                                            key_width, 
-                                                                            acceleration, 
-                                                                            velocity)
+                    if j < last_note:
+                        if abs(freed) >= 1:
+                            scores[j] = self.cluster_playable[j].move_score(
+                                abs(self.moves[j]) + 1,
+                                us_per_tick,
+                                key_width,
+                                acceleration,
+                                velocity,
+                            )
+
                     else:
                         break
-                    
-                if(min(scores) > 1):
+
+                if min(scores) > 1:
                     raise ValueError("Minimum score is not <1")
                 best_index = min(range(len(scores)), key=scores.__getitem__)
 
-                self.moves[best_index] += need[1]
+                self.moves[best_index] += int(math.copysign(1, need[1]))
+
 
 if __name__ == "__main__":
     import os
@@ -883,6 +952,7 @@ if __name__ == "__main__":
     note_list.find_clusters()
     note_list.set_tick_duration(music_xml.us_per_div)
     note_list.find_moves(keyWidth, constants.max_acceleration, constants.max_velocity)
+    note_list.find_locations()
 
     print(note_list)
 
