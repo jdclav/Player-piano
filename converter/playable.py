@@ -129,7 +129,7 @@ class PlayableNote:
         self.next_delay = next_start - self.note_start
 
     def set_time_loss(self, time_loss: float) -> None:
-        """
+        """TODO TODO TODO
         Set the time loss for the note in terms of microseconds as a float.
 
         param time_loss: A float value that represents the total time removed

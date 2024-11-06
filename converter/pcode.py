@@ -197,7 +197,7 @@ class MoveCommand:
     ) -> None:
         """TODO"""
         self.duration_parameter += "l"
-        note_diff_ticks = self.next_note.note_start - self.note.note_start
+        note_diff_ticks = self.note.next_delay
         duration_ticks = note_diff_ticks - self.note.duration
         ideal_duration_us = duration_ticks * us_per_tick
         move_duration_us = (ideal_duration_us - retract_time) + note.time_loss
@@ -260,6 +260,8 @@ if __name__ == "__main__":
     note_after.set_position(10)
     note_after.set_time_loss(0)
 
+    note.set_delay(40000)
+
     play_command = PlayCommand(Hand.RIGHT, note, 0)
     play_command.generate_pcode(10, key_map)
 
@@ -267,7 +269,7 @@ if __name__ == "__main__":
     play_after_command.generate_pcode(10, key_map)
 
     move_command = MoveCommand(Hand.RIGHT, note, note_after, 0)
-    move_command.generate_pcode(10, 23.2, 0)
+    move_command.generate_pcode(10, 23.2, 20000)
 
     print(play_command.pcode)
     print(play_after_command.pcode)
