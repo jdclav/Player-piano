@@ -83,8 +83,10 @@ class PlayableNote:
         )
         """A set that contains every valid location for the hand that allows this note to be played."""
 
-        self.default_location = min(self.possible_locations)
-        """The integer value used to represent the location of this note."""
+        self.position: int = 0
+        """TODO"""
+
+        self.time_loss: float = 0.0
 
     def add_pitch(self, new_midi_pitch: int) -> int:
         """
@@ -102,7 +104,6 @@ class PlayableNote:
         if temp_locations:
             self.possible_locations = temp_locations
             self.midi_pitches.append(new_midi_pitch)
-            self.default_location = min(self.possible_locations)
             return INSIDE_LOCATION
         else:
             return OUTSIDE_LOCATION
@@ -124,7 +125,17 @@ class PlayableNote:
         return min(self.possible_locations)
 
     def set_delay(self, next_start: int) -> None:
+        """TODO Might remove"""
         self.next_delay = next_start - self.note_start
+
+    def set_time_loss(self, time_loss: float) -> None:
+        """
+        Set the time loss for the note in terms of microseconds as a float.
+
+        param time_loss: A float value that represents the total time removed
+        from the playing duration for things like moves and solenoid retracts
+        """
+        self.time_loss = time_loss
 
     def move_score(
         self,
@@ -155,6 +166,14 @@ class PlayableNote:
             return score
         else:
             return 0
+
+    def set_position(self, position: int) -> None:
+        """
+        Add the position to this object in terms of integer keys
+
+        param position: An integer value that represents the position in keys to play this note.
+        """
+        self.position = position
 
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
@@ -193,8 +212,6 @@ class PlayableNoteList:
         """Every move that should take place during this PlayableNoteList as a list of integers."""
 
         self.us_per_tick = 0
-        """TODO"""
-        self.locations: list[int] = []
         """TODO"""
 
         self.process_list(note_list)
@@ -269,10 +286,9 @@ class PlayableNoteList:
             current_location = max(first_group.possible_locations)
         else:
             current_location = min(first_group.possible_locations)
-        for move in self.moves:
-            self.locations.append(current_location)
+        for i, move in enumerate(self.moves):
+            self.playable_list[i].set_position(current_location)
             current_location += move
-        pass
 
     def __iter__(self) -> list[PlayableNote]:
         return iter(self.playable_list)
@@ -706,11 +722,6 @@ class PlayableGroupList:
         for cluster in self.cluster_list:
             cluster.find_cluster_freeds()
 
-    def find_moves(self) -> None:
-        """TODO Not used"""
-
-        pass
-
     def __str__(self) -> str:
         temp = ""
         for playable in self.group_list:
@@ -954,7 +965,8 @@ if __name__ == "__main__":
     note_list.find_moves(keyWidth, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
 
-    print(note_list)
+    for i, item in enumerate(note_list.playable_list):
+        print(f"{item.position}")
 
 
 """
