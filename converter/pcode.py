@@ -1,7 +1,7 @@
 from enum import Enum
 
 from solenoids import SolenoidIndex
-from playable import PlayableNote
+from playable import PlayableNote, PlayableNoteList
 from constants import base_18
 
 
@@ -89,7 +89,7 @@ class PlayCommand:
         self.time_parameter += "t"
         relative_start = self.note.note_start - self.previous_time
         relative_start_us = relative_start * us_per_tick
-        # TODO adapt from ms to ms in the future
+        # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
         self.time_parameter += str(relative_start_ms)
 
@@ -186,7 +186,7 @@ class MoveCommand:
             - self.note.time_loss
         )
         relative_start_us = abs_start_us - self.previous_move_time
-        # TODO adapt from ms to ms in the future
+        # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
         self.time_parameter += str(relative_start_ms)
 
@@ -228,7 +228,7 @@ class MoveCommand:
 
 
 class PlayList:
-    def __init__(self) -> None:
+    def __init__(self, note_list: PlayableNoteList) -> None:
         """
         An entire list of PlayCommands for a single hand.
         """
@@ -244,11 +244,37 @@ class MoveList:
 
 
 if __name__ == "__main__":
+    import os
     from constants import Constants
+    from musicxml import MusicXML
 
     constants = Constants()
 
     key_map = SolenoidIndex(88, constants.first_88_key)
+
+    current_directory = os.path.dirname(os.path.realpath(__file__))
+    file_name = "test.musicxml"
+
+    xml_file = f"{current_directory}/{file_name}"
+
+    music_xml = MusicXML(xml_file)
+
+    first_part = music_xml.part_ids[0]
+
+    first_staff = music_xml.generate_note_list(first_part)[0]
+
+    music_xml.us_per_division(first_part.id)
+
+    note_list = PlayableNoteList(key_map, first_staff)
+
+    note_list.find_groups()
+    note_list.find_clusters()
+    note_list.set_tick_duration(music_xml.us_per_div)
+    note_list.find_moves(23.2, constants.max_acceleration, constants.max_velocity)
+    note_list.find_locations()
+    note_list.find_time_losses()
+
+    ###################################################
 
     note = PlayableNote(key_map, 10000, 20000, 40, 20)
     note.add_pitch(45)
@@ -275,3 +301,5 @@ if __name__ == "__main__":
     print(play_after_command.pcode)
 
     print(move_command.pcode)
+
+    ##################################################

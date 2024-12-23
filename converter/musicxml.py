@@ -35,12 +35,11 @@ class XMLNote:
         """
         The group of pitches that make up this note represented by 
         integer values equal to the midi representation.
-        """        
+        """
         self.velocity = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
         self.modifiers = modifiers
         """TODO"""
-        
 
     def __str__(self) -> str:
         return f"Start: {self.note_start}, Duration: {self.duration}, Midi_Pitch: {self.midi_pitch}, Velocity: {self.velocity}"
@@ -118,9 +117,9 @@ class MusicXML:
 
     def find_part(self, part_id: str) -> LE._Element:
         """Find the musicxml part associated with the given part id.
-        
+
         param part_id: A string containing the part id of the desired part.
-        
+
         return: Returns the xml element of the part.
         """
         part = self.root.find(f".//part[@id='{part_id}']")
@@ -143,8 +142,7 @@ class MusicXML:
         staff_count = len(temp)
         if staff_count == 0:
             staff_count = 1
-        return staff_count    
-        
+        return staff_count
 
     def us_per_division(self, part_id: str) -> None:
         """
@@ -163,7 +161,7 @@ class MusicXML:
             # TODO Randomish default if no tempo is defined
             tempo = 120
 
-        quarters_per_beat = 4 / 4 #beat_type
+        quarters_per_beat = 4 / 4  # beat_type
         quarters_per_minute = tempo * quarters_per_beat
         divisions_per_minute = quarters_per_minute * divisions
         us_per_minute = 1e6 * 60
@@ -182,7 +180,7 @@ class MusicXML:
         for item in part_list:
             if item.attrib["id"] == part_id:
                 score_part = item
-                part_velocity = int(score_part.find(".//volume").text)
+                part_velocity = float(score_part.find(".//volume").text)
 
                 return part_velocity
 

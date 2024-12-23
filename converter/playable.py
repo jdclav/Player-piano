@@ -175,6 +175,21 @@ class PlayableNote:
         """
         self.position = position
 
+    def find_time_loss(
+        self,
+        distance: int,
+        key_width: float,
+        acceleration: float,
+        velociy: float,
+    ):
+        """
+        TODO
+        """
+        distance_mm = distance * key_width
+        lost_time = travel_time(distance_mm, acceleration, velociy) + actuationTime
+        lost_time_ms = lost_time / 1000.0
+        self.set_time_loss(lost_time_ms)
+
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
 
@@ -289,6 +304,12 @@ class PlayableNoteList:
         for i, move in enumerate(self.moves):
             self.playable_list[i].set_position(current_location)
             current_location += move
+
+    def find_time_losses(self) -> None:
+        for i in range(0, len(self.moves)):
+            self.playable_list[i].find_time_loss(
+                abs(self.moves[i]), keyWidth, maxAccel, maxSpeed
+            )
 
     def __iter__(self) -> list[PlayableNote]:
         return iter(self.playable_list)
@@ -613,7 +634,7 @@ class PlayableGroup:
                         break
             self.last_freed_point(remaining_freed)
         else:
-            raise (TypeError("Direction no specified."))
+            raise (TypeError("Direction not specified."))
 
     def __str__(self) -> str:
         temp = ""
@@ -685,13 +706,12 @@ class PlayableGroupList:
                     previous_group.set_out_direction(LEFT_DIRECTION)
                     current_group.set_in_direction(RIGHT_DIRECTION)
 
-                if i == (len(groups) - 1):
-                    current_group.set_out_direction(NO_DIRECTION)
-
             elif i == 0:
                 current_group.set_in_direction(NO_DIRECTION)
 
             previous_group = groups[i]
+
+        current_group.set_out_direction(NO_DIRECTION)
 
     def find_clusters(self) -> None:
         """
@@ -951,7 +971,7 @@ if __name__ == "__main__":
 
     music_xml = MusicXML(xml_file)
 
-    first_part = music_xml.part_ids[1]
+    first_part = music_xml.part_ids[0]
 
     first_staff = music_xml.generate_note_list(first_part)[0]
 
@@ -964,9 +984,12 @@ if __name__ == "__main__":
     note_list.set_tick_duration(music_xml.us_per_div)
     note_list.find_moves(keyWidth, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
+    note_list.find_time_losses()
 
     for i, item in enumerate(note_list.playable_list):
-        print(f"{item.position}")
+        print(
+            f"{i}\nPosition: {item.position} \nNotes: {item.midi_pitches}\nTime Loss: {item.time_loss}\n"
+        )
 
 
 """
