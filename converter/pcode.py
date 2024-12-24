@@ -4,6 +4,11 @@ from solenoids import SolenoidIndex
 from playable import PlayableNote, PlayableNoteList
 from constants import base_18
 
+# TODO temp constants
+RETRACT_TIME = 50000
+KEY_WIDTH = 23.2
+START_DELAY = 5000
+
 
 class Hand(Enum):
     RIGHT = 0
@@ -74,15 +79,15 @@ class PlayCommand:
             )
             # TODO How to assign "finger" to solenoid
             base = base_18()
-            self.digit_parameter += str(base[solenoid_position + 1])
+            self.digit_parameter += str(base[solenoid_position])
 
         for _ in range(i, 4):
-            self.digit_parameter += "0"
+            self.digit_parameter += str(base[-1])
 
     def set_velocity_paramter(self) -> None:
         """TODO"""
         self.velocity_parameter += "f"
-        self.velocity_parameter += str(self.note.velocity)
+        self.velocity_parameter += "10"  # TODO current velocity is not tracked correctly str(self.note.velocity)
 
     def set_time_parameter(self, us_per_tick: float) -> None:
         """TODO"""
@@ -96,7 +101,7 @@ class PlayCommand:
     def set_duration_parameter(self, us_per_tick: float) -> None:
         """TODO"""
         self.duration_parameter += "l"
-        ideal_duration_us = note.duration * us_per_tick
+        ideal_duration_us = self.note.duration * us_per_tick
         actual_duration_us = ideal_duration_us - self.note.time_loss
         # TODO adapt from ms to ms in the future
         actual_duration_ms = int(actual_duration_us / 1000)
@@ -120,7 +125,21 @@ class PlayCommand:
         self.pcode += self.time_parameter
         self.pcode += " "
         self.pcode += self.duration_parameter
-        pass
+
+    def set_first_time(self, initial_time: int) -> None:
+        """TODO"""
+        self.pcode = ""
+        self.pcode += "d"
+        self.pcode += " "
+        self.pcode += self.hand_parameter
+        self.pcode += " "
+        self.pcode += self.digit_parameter
+        self.pcode += " "
+        self.pcode += self.velocity_parameter
+        self.pcode += " "
+        self.pcode += f"t{initial_time}"
+        self.pcode += " "
+        self.pcode += self.duration_parameter
 
 
 class MoveCommand:
@@ -171,6 +190,7 @@ class MoveCommand:
 
     def set_position_parameter(self, key_width: float) -> None:
         """TODO"""
+        self.position_parameter += "p"
         self.position_parameter += str(int(key_width * self.next_note.position))
 
     def set_time_parameter(
@@ -200,10 +220,15 @@ class MoveCommand:
         note_diff_ticks = self.note.next_delay
         duration_ticks = note_diff_ticks - self.note.duration
         ideal_duration_us = duration_ticks * us_per_tick
-        move_duration_us = (ideal_duration_us - retract_time) + note.time_loss
+        move_duration_us = (ideal_duration_us - retract_time) + self.note.time_loss
         # TODO adapt from ms to ms in the future
         move_duration_ms = int(move_duration_us / 1000)
         self.duration_parameter += str(move_duration_ms)
+
+    def set_first_times(self):
+        """TODO"""
+        self.time_parameter += "t0"
+        self.duration_parameter += "l" + str(START_DELAY)
 
     def generate_pcode(
         self,
@@ -214,8 +239,13 @@ class MoveCommand:
         """TODO"""
         self.set_hand_paramter()
         self.set_position_parameter(key_width)
-        self.set_time_parameter(us_per_tick, retract_time)
-        self.set_duration_parameter(us_per_tick, retract_time)
+
+        if self.note.position == self.note.position:
+            self.set_first_times()
+        else:
+            self.set_time_parameter(us_per_tick, retract_time)
+            self.set_duration_parameter(us_per_tick, retract_time)
+
         self.pcode += "h"
         self.pcode += " "
         self.pcode += self.hand_parameter
@@ -228,19 +258,91 @@ class MoveCommand:
 
 
 class PlayList:
-    def __init__(self, note_list: PlayableNoteList) -> None:
-        """
+    def __init__(
+        self, note_list: PlayableNoteList, key_map: SolenoidIndex, us_per_tick: float
+    ) -> None:
+        """TODO
         An entire list of PlayCommands for a single hand.
         """
-        pass
+
+        self.note_list = note_list
+        """TODO"""
+        self.key_map = key_map
+        """TODO"""
+        self.us_per_tick = us_per_tick
+        """TODO"""
+
+        self.play_commands: list[PlayCommand] = []
+        """TODO"""
+
+    def generate_play_list(self, hand: Hand) -> None:
+        previous_time: float = 0
+        for note in self.note_list.playable_list:
+            play_command = PlayCommand(hand, note, previous_time)
+            play_command.generate_pcode(self.us_per_tick, self.key_map)
+            self.play_commands.append(play_command)
+            previous_time = note.note_start
+
+        self.play_commands[0].set_first_time(START_DELAY)
+
+    def __str__(self):
+        temp_string = ""
+        for item in self.play_commands:
+            temp_string = temp_string + item.pcode + "\n"
+
+        return temp_string
 
 
 class MoveList:
-    def __init__(self) -> None:
-        """
+    def __init__(
+        self, note_list: PlayableNoteList, key_map: SolenoidIndex, us_per_tick: float
+    ) -> None:
+        """TODO
         An entire list of MoveCommands for a single hand.
         """
-        pass
+
+        self.note_list = note_list
+        """TODO"""
+        self.key_map = key_map
+        """TODO"""
+        self.us_per_tick = us_per_tick
+        """TODO"""
+
+        self.move_commands: list[MoveCommand] = []
+        """TODO"""
+
+    def generate_move_list(
+        self, hand: Hand, key_width: float, retract_time: float
+    ) -> None:
+        """TODO"""
+        previous_time: float = 0
+
+        for i in range(0, len(self.note_list.playable_list)):
+            if i == 0:
+                move_command = MoveCommand(
+                    hand, self.note_list[i], self.note_list[i], previous_time
+                )
+                move_command.generate_pcode(self.us_per_tick, key_width, retract_time)
+
+                self.move_commands.append(move_command)
+
+            else:
+                if self.note_list[i].position != self.note_list[i - 1].position:
+                    move_command = MoveCommand(
+                        hand, self.note_list[i - 1], self.note_list[i], previous_time
+                    )
+                    move_command.generate_pcode(
+                        self.us_per_tick, key_width, retract_time
+                    )
+
+                    self.move_commands.append(move_command)
+
+    def __str__(self):
+        temp_string = ""
+        for item in self.move_commands:
+            temp_string = temp_string + item.pcode + "\n"
+
+        return temp_string
 
 
 if __name__ == "__main__":
@@ -274,32 +376,10 @@ if __name__ == "__main__":
     note_list.find_locations()
     note_list.find_time_losses()
 
-    ###################################################
+    play_commands = PlayList(note_list, key_map, music_xml.us_per_div)
+    play_commands.generate_play_list(Hand.RIGHT)
 
-    note = PlayableNote(key_map, 10000, 20000, 40, 20)
-    note.add_pitch(45)
-    note.set_position(8)
-    note.set_time_loss(10000)
+    move_commands = MoveList(note_list, key_map, music_xml.us_per_div)
+    move_commands.generate_move_list(Hand.RIGHT, 23.2, 50000)
 
-    note_after = PlayableNote(key_map, 40000, 20000, 48, 20)
-    note_after.add_pitch(51)
-    note_after.set_position(10)
-    note_after.set_time_loss(0)
-
-    note.set_delay(40000)
-
-    play_command = PlayCommand(Hand.RIGHT, note, 0)
-    play_command.generate_pcode(10, key_map)
-
-    play_after_command = PlayCommand(Hand.RIGHT, note_after, note.note_start)
-    play_after_command.generate_pcode(10, key_map)
-
-    move_command = MoveCommand(Hand.RIGHT, note, note_after, 0)
-    move_command.generate_pcode(10, 23.2, 20000)
-
-    print(play_command.pcode)
-    print(play_after_command.pcode)
-
-    print(move_command.pcode)
-
-    ##################################################
+    print(str(play_commands) + str(move_commands))

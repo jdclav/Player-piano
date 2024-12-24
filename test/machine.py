@@ -12,7 +12,7 @@ def main(stdscr):
     # 1 for anything other than testing
     speedMultiply = 1
 
-    path = "results.pcode"
+    path = "testing.pcode"
 
     command_list = CommandList(path)
 

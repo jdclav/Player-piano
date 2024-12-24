@@ -58,7 +58,7 @@ class Command:
         temp_solenoid_list: list[int] = []
 
         for solenoid in temp_solenoid_locations:
-            if solenoid != "0":
+            if solenoid != BASE18[-1]:
                 temp_solenoid_list.append(BASE18.index(solenoid))
 
         self.solenoid_locations = temp_solenoid_list
