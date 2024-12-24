@@ -161,7 +161,9 @@ class PlayableNote:
         over 1 means the entered distance cannot be traveled after playing this note.
         """
         distance_mm = distance * key_width
-        score_time = travel_time(distance_mm, acceleration, velociy) + actuationTime
+        score_time = (
+            travel_time(distance_mm, acceleration, velociy) + actuationTime
+        )  # TODO This needs to not be a file constant. This should be a config value.
         spare_time = (self.next_delay - self.duration) * us_per_tick
         if score_time >= spare_time:
             real_score_time = score_time - spare_time
@@ -190,9 +192,10 @@ class PlayableNote:
         TODO
         """
         distance_mm = distance * key_width
-        lost_time = travel_time(distance_mm, acceleration, velociy) + actuationTime
-        lost_time_ms = lost_time / 1000.0
-        self.set_time_loss(lost_time_ms)
+        lost_time = (
+            travel_time(distance_mm, acceleration, velociy) + actuationTime
+        )  # TODO This should be a config value not a file constant.
+        self.set_time_loss(lost_time)
 
     def __iter__(self) -> list[int]:
         return iter(self.midi_pitches)
@@ -329,6 +332,12 @@ class PlayableNoteList:
         for playable in self.playable_list:
             temp += repr(playable) + "\n"
         return temp
+
+    def __getitem__(self, i: int) -> PlayableNote:
+        return self.playable_list[i]
+
+    def __setitem__(self, i: int, data: PlayableNote) -> None:
+        self.playable_list[i] = data
 
 
 class PlayableGroup:

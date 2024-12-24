@@ -46,10 +46,11 @@ class Constants:
             temp_list.append(chr(i))
         self.step_list = tuple(temp_list)
 
+
 def base_18() -> None:
-        temp_list: list[str] = []
-        for i in range(0, 10):
-            temp_list.append(str(i))
-        for i in range(ord("A"), ord("H") + 1):
-            temp_list.append(chr(i))
-        return tuple(temp_list)
+    temp_list: list[str] = []
+    for i in range(0, 10):
+        temp_list.append(str(i))
+    for i in range(ord("A"), ord("H") + 1):
+        temp_list.append(chr(i))
+    return tuple(temp_list)
