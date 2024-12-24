@@ -20,6 +20,10 @@ maxSpeed = 300
 maxAccel = 3000
 
 
+def move_closer_to_zero(lst):
+    return [x - 1 if x > 0 else x + 1 if x < 0 else x for x in lst]
+
+
 def travel_time(distance, accel, velocity):
     """TODO Verify and update"""
     mAccelDistance = (velocity**2) / (2 * accel)
@@ -444,12 +448,6 @@ class PlayableGroup:
         param distance: An integer representing distance needed to travel to this group from the last group.
         """
         self.need_points.insert(0, [0, distance])
-
-        group_length = len(self.playable_group)
-        if self.need_points[-1][0] == group_length - 1:
-            self.need_points[-1][1] += distance
-        else:
-            self.need_points.append([group_length - 1, distance])
 
     def last_freed_point(self, distance: int) -> None:
         """TODO Does nothing useful atm.
@@ -957,11 +955,12 @@ class PlayableGroupCluster:
                     else:
                         break
 
-                if min(scores) > 1:
+                if min(scores) >= 1.0:
                     raise ValueError("Minimum score is not <1")
                 best_index = min(range(len(scores)), key=scores.__getitem__)
-
                 self.moves[best_index] += int(math.copysign(1, need[1]))
+                self.cluster_freed = move_closer_to_zero(self.cluster_freed)
+                scores = [1.0] * len(self.cluster_playable)
 
 
 if __name__ == "__main__":
