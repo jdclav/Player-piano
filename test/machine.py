@@ -1,9 +1,9 @@
 from curses import wrapper
 from decode import CommandList
 import time
+import simpleaudio as sa
 from frame import FrameList
 from audioTest import NoteList
-import simpleaudio as sa
 
 SAMPLE_RATE = 48000
 

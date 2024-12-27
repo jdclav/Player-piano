@@ -880,7 +880,7 @@ class PlayableGroupCluster:
 
                 groups[i].set_absolute_need(need_distance)
                 previous_group.set_absolute_freed(freed_distance)
-                previous_width = len(current_locations)
+                # previous_width = len(current_locations)
 
             previous_group = groups[i]
 

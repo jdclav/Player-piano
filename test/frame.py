@@ -251,6 +251,8 @@ class FrameList:
 
         self.retract_delay: int = 0
 
+        self.current_move_duration: float = 0
+
     def __capture_frame(self) -> None:
         self.frames.append(deepcopy(self.piano_state))
 
@@ -277,7 +279,8 @@ class FrameList:
 
             if len(self.movement) > 0 and self.movement[0] < next_command_time:
                 self.piano_state.shift_hand(
-                    self.movement_direction, self.movement.pop(0)
+                    self.movement_direction,
+                    self.movement.pop(0) + self.current_move_duration,
                 )
                 self.__capture_frame()
                 continue
@@ -301,6 +304,7 @@ class FrameList:
                     current_command.position / KEY_WIDTH
                 ) - self.piano_state.current_position
                 self.move_hand(distance_in_keys)
+                self.current_move_duration = current_command.duration
 
         if self.retract_delay > 0:
             self.piano_state.retract(self.retract_delay)

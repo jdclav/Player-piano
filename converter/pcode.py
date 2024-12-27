@@ -14,6 +14,9 @@ class Hand(Enum):
     RIGHT = 0
     LEFT = 1
 
+    def __int__(self):
+        return self.value
+
 
 class PlayCommand:
     def __init__(
@@ -39,15 +42,15 @@ class PlayCommand:
         self.previous_time = previous_time
         """A float value in microseconds from the previous PlayCommand."""
 
-        self.hand_parameter: str = ""
+        self.hand_parameter: int = 0
         """TODO"""
         self.digit_parameter: str = ""
         """TODO"""
-        self.velocity_parameter: str = ""
+        self.velocity_parameter: int = 0
         """TODO"""
-        self.time_parameter: str = ""
+        self.time_parameter: int = 0
         """TODO"""
-        self.duration_parameter: str = ""
+        self.duration_parameter: int = 0
         """TODO"""
 
         self.pcode: str = ""
@@ -57,11 +60,7 @@ class PlayCommand:
         """
         Convert the hand value to the pcode representation.
         """
-        self.hand_parameter += "s"
-        if self.hand == Hand.RIGHT:
-            self.hand_parameter += "0"
-        else:
-            self.hand_parameter += "1"
+        self.hand_parameter = int(self.hand)
 
     def set_digit_parameter(self, key_map: SolenoidIndex) -> None:
         """
@@ -70,7 +69,6 @@ class PlayCommand:
         param key_map: A SolenoidIndex object that relates pitch, position, and solenoid.
         param position: An integer value for the position in terms of piano keys.
         """
-        self.digit_parameter += "n"
         for i, pitch in enumerate(self.note.midi_pitches):
             index_list = key_map.index_list[pitch]
             locations_list = index_list.positions
@@ -86,26 +84,25 @@ class PlayCommand:
 
     def set_velocity_paramter(self) -> None:
         """TODO"""
-        self.velocity_parameter += "f"
-        self.velocity_parameter += "10"  # TODO current velocity is not tracked correctly str(self.note.velocity)
+        self.velocity_parameter = (
+            10  # TODO current velocity is not tracked correctly str(self.note.velocity)
+        )
 
     def set_time_parameter(self, us_per_tick: float) -> None:
         """TODO"""
-        self.time_parameter += "t"
         relative_start = self.note.note_start - self.previous_time
         relative_start_us = relative_start * us_per_tick
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
-        self.time_parameter += str(relative_start_ms)
+        self.time_parameter = relative_start_ms
 
     def set_duration_parameter(self, us_per_tick: float) -> None:
         """TODO"""
-        self.duration_parameter += "l"
         ideal_duration_us = self.note.duration * us_per_tick
         actual_duration_us = ideal_duration_us - self.note.time_loss
         # TODO adapt from ms to ms in the future
         actual_duration_ms = int(actual_duration_us / 1000)
-        self.duration_parameter += str(actual_duration_ms)
+        self.duration_parameter = actual_duration_ms
 
     def generate_pcode(self, us_per_tick: float, key_map: SolenoidIndex) -> None:
         """TODO"""
@@ -115,31 +112,31 @@ class PlayCommand:
         self.set_time_parameter(us_per_tick)
         self.set_duration_parameter(us_per_tick)
         self.pcode += "d"
-        self.pcode += " "
-        self.pcode += self.hand_parameter
-        self.pcode += " "
+        self.pcode += " s"
+        self.pcode += str(self.hand_parameter)
+        self.pcode += " n"
         self.pcode += self.digit_parameter
-        self.pcode += " "
-        self.pcode += self.velocity_parameter
-        self.pcode += " "
-        self.pcode += self.time_parameter
-        self.pcode += " "
-        self.pcode += self.duration_parameter
+        self.pcode += " f"
+        self.pcode += str(self.velocity_parameter)
+        self.pcode += " t"
+        self.pcode += str(self.time_parameter)
+        self.pcode += " l"
+        self.pcode += str(self.duration_parameter)
 
     def set_first_time(self, initial_time: int) -> None:
         """TODO"""
         self.pcode = ""
         self.pcode += "d"
-        self.pcode += " "
-        self.pcode += self.hand_parameter
-        self.pcode += " "
+        self.pcode += " s"
+        self.pcode += str(self.hand_parameter)
+        self.pcode += " n"
         self.pcode += self.digit_parameter
-        self.pcode += " "
-        self.pcode += self.velocity_parameter
-        self.pcode += " "
-        self.pcode += f"t{initial_time}"
-        self.pcode += " "
-        self.pcode += self.duration_parameter
+        self.pcode += " f"
+        self.pcode += str(self.velocity_parameter)
+        self.pcode += " t"
+        self.pcode += str(initial_time)
+        self.pcode += " l"
+        self.pcode += str(self.duration_parameter)
 
 
 class MoveCommand:
@@ -166,13 +163,13 @@ class MoveCommand:
         self.previous_move_time = previous_move_time
         """TODO"""
 
-        self.hand_parameter: str = ""
+        self.hand_parameter: int = 0
         """TODO"""
-        self.position_parameter: str = ""
+        self.position_parameter: int = 0
         """TODO"""
-        self.time_parameter: str = ""
+        self.time_parameter: int = 0
         """TODO"""
-        self.duration_parameter: str = ""
+        self.duration_parameter: int = 0
         """TODO"""
 
         self.pcode: str = ""
@@ -182,16 +179,11 @@ class MoveCommand:
         """
         Convert the hand value to the pcode representation.
         """
-        self.hand_parameter += "s"
-        if self.hand == Hand.RIGHT:
-            self.hand_parameter += "0"
-        else:
-            self.hand_parameter += "1"
+        self.hand_parameter = int(self.hand)
 
     def set_position_parameter(self, key_width: float) -> None:
         """TODO"""
-        self.position_parameter += "p"
-        self.position_parameter += str(int(key_width * self.next_note.position))
+        self.position_parameter = int(key_width * self.next_note.position)
 
     def set_time_parameter(
         self,
@@ -199,16 +191,15 @@ class MoveCommand:
         retract_time: float,
     ) -> None:
         """TODO"""
-        self.time_parameter += "t"
         abs_start_us = (
-            ((self.note.note_start + self.note.duration) * us_per_tick)
+            (self.note.note_start + self.note.duration) * us_per_tick
             + retract_time
             - self.note.time_loss
         )
         relative_start_us = abs_start_us - self.previous_move_time
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
-        self.time_parameter += str(relative_start_ms)
+        self.time_parameter = relative_start_ms
 
     def set_duration_parameter(
         self,
@@ -216,19 +207,18 @@ class MoveCommand:
         retract_time: float,
     ) -> None:
         """TODO"""
-        self.duration_parameter += "l"
         note_diff_ticks = self.note.next_delay
         duration_ticks = note_diff_ticks - self.note.duration
         ideal_duration_us = duration_ticks * us_per_tick
         move_duration_us = (ideal_duration_us - retract_time) + self.note.time_loss
         # TODO adapt from ms to ms in the future
         move_duration_ms = int(move_duration_us / 1000)
-        self.duration_parameter += str(move_duration_ms)
+        self.duration_parameter = move_duration_ms
 
     def set_first_times(self):
         """TODO"""
-        self.time_parameter += "t0"
-        self.duration_parameter += "l" + str(START_DELAY)
+        self.time_parameter = 0
+        self.duration_parameter = START_DELAY
 
     def generate_pcode(
         self,
@@ -240,21 +230,21 @@ class MoveCommand:
         self.set_hand_paramter()
         self.set_position_parameter(key_width)
 
-        if self.note.position == self.note.position:
+        if self.note.note_start == self.next_note.note_start:
             self.set_first_times()
         else:
             self.set_time_parameter(us_per_tick, retract_time)
             self.set_duration_parameter(us_per_tick, retract_time)
 
         self.pcode += "h"
-        self.pcode += " "
-        self.pcode += self.hand_parameter
-        self.pcode += " "
-        self.pcode += self.position_parameter
-        self.pcode += " "
-        self.pcode += self.time_parameter
-        self.pcode += " "
-        self.pcode += self.duration_parameter
+        self.pcode += " s"
+        self.pcode += str(self.hand_parameter)
+        self.pcode += " p"
+        self.pcode += str(self.position_parameter)
+        self.pcode += " d"
+        self.pcode += str(self.time_parameter)
+        self.pcode += " l"
+        self.pcode += str(self.duration_parameter)
 
 
 class PlayList:
@@ -326,6 +316,8 @@ class MoveList:
 
                 self.move_commands.append(move_command)
 
+                previous_time = -1 * START_DELAY * 1000
+
             else:
                 if self.note_list[i].position != self.note_list[i - 1].position:
                     move_command = MoveCommand(
@@ -336,6 +328,8 @@ class MoveList:
                     )
 
                     self.move_commands.append(move_command)
+
+                    previous_time += move_command.time_parameter * 1000
 
     def __str__(self):
         temp_string = ""
