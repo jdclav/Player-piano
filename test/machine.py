@@ -4,22 +4,20 @@ import time
 import simpleaudio as sa
 from frame import FrameList
 from audioTest import NoteList
+import os
 
 SAMPLE_RATE = 48000
+SPEED_MULTIPLIER = 1
 
 
 def main(stdscr):
-    # 1 for anything other than testing
-    speedMultiply = 1
 
-    path = "testing.pcode"
+    current_directory = os.path.dirname(os.path.realpath(__file__))
+    file = "/testing.pcode"
 
-    command_list = CommandList(path)
-
+    command_list = CommandList(current_directory + file)
     frame_list = FrameList()
-
     frame_list.process_command_list(command_list)
-
     notes = NoteList()
 
     for frame in frame_list.audio_frames:
@@ -31,15 +29,13 @@ def main(stdscr):
             print("Index: " + str(i) + " " + str(note))
 
     notes.full_waveform(frame_list.piano_state.frame_time, 1000, SAMPLE_RATE)
-
     sa.play_buffer(notes.waveform, 1, 2, SAMPLE_RATE)
 
     startTime = round(time.time() * 1000)
-
     currentTime = startTime
 
     for frame in frame_list.frames:
-        while (currentTime - startTime) < (frame.frame_time / speedMultiply):
+        while (currentTime - startTime) < (frame.frame_time / SPEED_MULTIPLIER):
             currentTime = round(time.time() * 1000)
 
         stdscr.addstr(0, 0, "".join(frame.topLine))

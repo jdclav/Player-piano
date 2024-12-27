@@ -1,36 +1,56 @@
 import math
 
 
-def timeDistanceAcceleration(distance: float, acceleration: int):
-    """Returns the time it takes to travel a given distance with a constant
-    acceleration."""
-    return math.sqrt((2 * distance) / acceleration)
-
-
-def timeDistanceVelocity(
-    distance: float, velocity: int, distanceOffset: float, timeOffset: float
-):
-    """Returns time to travel a given distance at a constant velocity. Includes both
-    distance and time offsets. timeOffest should be the time from start the constant
-    velocity starts. distanceOffset should be the distance from start the constant
-    velocity starts.
+def accel_time(dist: float, accel: float) -> float:
     """
-    return ((distance - distanceOffset) / velocity) + timeOffset
+    Calculates the time in seconds to travel a given distance with a given acceleration.
+
+    param dist: A float value representing the distance to travel in mm.
+    param accel: A float value representing the acceleration of the move in mm/s^2.
+
+    return: A float value representing the time in seconds it take to travel
+    dist with the given accel.
+    """
+
+    result_time = math.sqrt((2 * dist) / accel)
+
+    return result_time
 
 
-def timeDistanceDeceleration(
-    distance: float,
-    velocity: int,
-    acceleration: int,
-    distanceOffset: float,
-    timeOffset: float,
-):
-    """Returns time to a given distance when decelerating at a constant rate from a
-    given velocity."""
-    squareRoot = math.sqrt(
-        abs((velocity**2) - (2 * acceleration * (distance - distanceOffset)))
-    )
-    return ((velocity - squareRoot) / acceleration) + timeOffset
+def velocity_time(dist: float, vel: float) -> float:
+    """
+    Returns time to travel a given distance at a constant velocity.
+
+    param dist: A float value representing the final distance to travel in mm.
+    param vel: A float value representing the velocity of the move in mm/s.
+
+    return: A float value for the total time in seconds to travel dist with
+    the given vel.
+    """
+
+    result_time = dist / vel
+
+    return result_time
+
+
+def deceleration_time(
+    dist: float,
+    vel: float,
+    accel: float,
+) -> float:
+    """
+    Calculates the time in seconds it takes to travel a given distance
+    while decelerating at a given rate from a given starting velocity.
+
+    param dist: A float value representing the final distance to travel in mm.
+    param vel: A float value representing the velocity of the move in mm/s.
+    param accel: A float value representing the deceleration of the move in mm/s^2.
+    """
+
+    squareRoot = math.sqrt(abs((vel**2) - (2 * accel * (dist))))
+    result_time = (vel - squareRoot) / accel
+
+    return result_time
 
 
 def timeDistanceFunction(
@@ -57,33 +77,34 @@ def timeDistanceFunction(
         timeOffset = math.sqrt((2 * halfDistance) / acceleration)
 
         if distance < halfDistance:
-            timePoint = timeDistanceAcceleration(distance, acceleration)
+            timePoint = accel_time(distance, acceleration)
         else:
-            timePoint = timeDistanceDeceleration(
-                distance, maxVelocity, acceleration, halfDistance, timeOffset
+            decel_dist = distance - halfDistance
+            timePoint = (
+                deceleration_time(decel_dist, maxVelocity, acceleration) + timeOffset
             )
+
     else:
         distanceToDeceleration = totalDistance - distanceToVelocity
 
         if distance < distanceToVelocity:
-            timePoint = timeDistanceAcceleration(distance, acceleration)
+            timePoint = accel_time(distance, acceleration)
 
         elif distance < distanceToDeceleration:
-            timePoint = timeDistanceVelocity(
-                distance, maxVelocity, distanceToVelocity, timeToVelocity
-            )
+            vel_distance = distance - distanceToVelocity
+            timePoint = velocity_time(vel_distance, maxVelocity) + timeToVelocity
 
         else:
-            timeToDeceleration = timeDistanceVelocity(
-                distanceToDeceleration, maxVelocity, distanceToVelocity, timeToVelocity
+            vel_distance = distanceToDeceleration - distanceToVelocity
+            timeToDeceleration = (
+                velocity_time(vel_distance, maxVelocity) + timeToVelocity
             )
 
-            timePoint = timeDistanceDeceleration(
-                distance,
-                maxVelocity,
-                acceleration,
-                distanceToDeceleration,
-                timeToDeceleration,
+            decel_dist = distance - distanceToDeceleration
+
+            timePoint = (
+                deceleration_time(decel_dist, maxVelocity, acceleration)
+                + timeToDeceleration
             )
 
     return 1000 * (timePoint)

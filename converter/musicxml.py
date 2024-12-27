@@ -1,12 +1,13 @@
 import lxml.etree as LE
 
-
 NOTES_IN_OCTAVE = 12
 BASE_OCTAVE_OFFSET = 1
 
 MISSING_VOLUME = -1
 
 # TODO Look for dynamics in measure
+# TODO Ties and slurs
+# TODO Turn
 
 
 class XMLNote:
