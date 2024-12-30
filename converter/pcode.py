@@ -23,24 +23,21 @@ class PlayCommand:
         self,
         hand: Hand,
         note: PlayableNote,
-        previous_time: int,
+        # previous_note: PlayableNote,
     ) -> None:
         """
         A single deploy of the solenoids of a single hand.
 
         param hand: A hand enum that represents the hand that will process this command.
         param note: The PlayableNote for this PlayCommand.
-        param previous_time: A float value in microseconds from the previous
-        PlayCommand.
-        param time_loss: A float value in microseconds that need to be removed from the
-        duration for retraction delay and any moves
+        param previous_time: The previous note from this PlayCommand.
         """
         self.hand = hand
         """The hand the will be using the command."""
         self.note = note
         """The PlayableNote associated with this command."""
-        self.previous_time = previous_time
-        """A float value in microseconds from the previous PlayCommand."""
+        self.previous_note = previous_note
+        # """A float value in microseconds from the previous PlayCommand."""
 
         self.hand_parameter: int = 0
         """TODO"""
@@ -88,29 +85,31 @@ class PlayCommand:
             10  # TODO current velocity is not tracked correctly str(self.note.velocity)
         )
 
-    def set_time_parameter(self, us_per_tick: float) -> None:
+    def set_time_parameter(self, previous_note: PlayableNote) -> None:
         """TODO"""
-        relative_start = self.note.note_start - self.previous_time
-        relative_start_us = relative_start * us_per_tick
+        relative_start = self.note.note_start - previous_note.note_start
+        relative_start_us = relative_start * previous_note.us_per_tick
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
         self.time_parameter = relative_start_ms
 
-    def set_duration_parameter(self, us_per_tick: float) -> None:
+    def set_duration_parameter(self) -> None:
         """TODO"""
-        ideal_duration_us = self.note.duration * us_per_tick
+        ideal_duration_us = self.note.duration * self.note.us_per_tick
         actual_duration_us = ideal_duration_us - self.note.time_loss
         # TODO adapt from ms to ms in the future
         actual_duration_ms = int(actual_duration_us / 1000)
         self.duration_parameter = actual_duration_ms
 
-    def generate_pcode(self, us_per_tick: float, key_map: SolenoidIndex) -> None:
+    def generate_pcode(
+        self, previous_note: PlayableNote, key_map: SolenoidIndex
+    ) -> None:
         """TODO"""
         self.set_hand_paramter()
         self.set_digit_parameter(key_map)
         self.set_velocity_paramter()
-        self.set_time_parameter(us_per_tick)
-        self.set_duration_parameter(us_per_tick)
+        self.set_time_parameter(previous_note)
+        self.set_duration_parameter()
         self.pcode += "d"
         self.pcode += " s"
         self.pcode += str(self.hand_parameter)
@@ -187,15 +186,16 @@ class MoveCommand:
 
     def set_time_parameter(
         self,
-        us_per_tick: float,
         retract_time: float,
     ) -> None:
         """TODO"""
+
         abs_start_us = (
             (self.note.note_start + self.note.duration) * us_per_tick
             + retract_time
             - self.note.time_loss
         )
+
         relative_start_us = abs_start_us - self.previous_move_time
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
@@ -248,9 +248,7 @@ class MoveCommand:
 
 
 class PlayList:
-    def __init__(
-        self, note_list: PlayableNoteList, key_map: SolenoidIndex, us_per_tick: float
-    ) -> None:
+    def __init__(self, note_list: PlayableNoteList, key_map: SolenoidIndex) -> None:
         """TODO
         An entire list of PlayCommands for a single hand.
         """
@@ -258,8 +256,6 @@ class PlayList:
         self.note_list = note_list
         """TODO"""
         self.key_map = key_map
-        """TODO"""
-        self.us_per_tick = us_per_tick
         """TODO"""
 
         self.play_commands: list[PlayCommand] = []
@@ -269,7 +265,7 @@ class PlayList:
         previous_time: float = 0
         for note in self.note_list.playable_list:
             play_command = PlayCommand(hand, note, previous_time)
-            play_command.generate_pcode(self.us_per_tick, self.key_map)
+            play_command.generate_pcode(self.key_map)
             self.play_commands.append(play_command)
             previous_time = note.note_start
 
@@ -284,9 +280,7 @@ class PlayList:
 
 
 class MoveList:
-    def __init__(
-        self, note_list: PlayableNoteList, key_map: SolenoidIndex, us_per_tick: float
-    ) -> None:
+    def __init__(self, note_list: PlayableNoteList, key_map: SolenoidIndex) -> None:
         """TODO
         An entire list of MoveCommands for a single hand.
         """
@@ -294,8 +288,6 @@ class MoveList:
         self.note_list = note_list
         """TODO"""
         self.key_map = key_map
-        """TODO"""
-        self.us_per_tick = us_per_tick
         """TODO"""
 
         self.move_commands: list[MoveCommand] = []
@@ -312,7 +304,7 @@ class MoveList:
                 move_command = MoveCommand(
                     hand, self.note_list[i], self.note_list[i], previous_time
                 )
-                move_command.generate_pcode(self.us_per_tick, key_width, retract_time)
+                move_command.generate_pcode(key_width, retract_time)
 
                 self.move_commands.append(move_command)
 

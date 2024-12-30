@@ -20,6 +20,18 @@ maxSpeed = 300
 maxAccel = 3000
 
 
+def musicxml_to_midi_velocity(xml_velocity: float) -> int:
+    """TODO"""
+
+    default_forte_midi = 90
+
+    xml_percentage = xml_velocity / 100
+
+    midi_velocity = default_forte_midi * xml_percentage
+
+    return int(midi_velocity)
+
+
 def move_closer_to_zero(lst):
     return [x - 1 if x > 0 else x + 1 if x < 0 else x for x in lst]
 
@@ -48,6 +60,7 @@ class PlayableNote:
         duration: int,
         midi_pitch: int,
         velocity: int,
+        us_per_tick: int,
     ) -> None:
         """
         Holds all the information for a single playable set of notes. This could be a single key or a chord.
@@ -77,6 +90,8 @@ class PlayableNote:
         A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
         hand positions for a giving pitch.
         """
+
+        self.us_per_tick = us_per_tick
 
         self.next_delay: int = 0
         """An integer value of musicxml ticks until the next note starts. Zero means there is no next note."""
@@ -144,7 +159,6 @@ class PlayableNote:
     def move_score(
         self,
         distance: int,
-        us_per_tick: float,
         key_width: float,
         acceleration: float,
         velociy: float,
@@ -164,10 +178,10 @@ class PlayableNote:
         score_time = (
             travel_time(distance_mm, acceleration, velociy) + actuationTime
         )  # TODO This needs to not be a file constant. This should be a config value.
-        spare_time = (self.next_delay - self.duration) * us_per_tick
+        spare_time = (self.next_delay - self.duration) * self.us_per_tick
         if score_time >= spare_time:
             real_score_time = score_time - spare_time
-            note_time = self.duration * us_per_tick
+            note_time = self.duration * self.us_per_tick
             score = real_score_time / note_time
             return score
         else:
@@ -233,9 +247,6 @@ class PlayableNoteList:
         self.moves: list[int] = []
         """Every move that should take place during this PlayableNoteList as a list of integers."""
 
-        self.us_per_tick = 0
-        """TODO"""
-
         self.process_list(note_list)
 
     def process_list(self, note_list: XMLNoteList) -> None:
@@ -256,6 +267,7 @@ class PlayableNoteList:
                         note.duration,
                         note.midi_pitch,
                         note.velocity,
+                        note.us_per_tick,
                     )
                     self.playable_list[-1].set_delay(temp_playable.note_start)
                     self.playable_list.append(temp_playable)
@@ -267,11 +279,9 @@ class PlayableNoteList:
                     note.duration,
                     note.midi_pitch,
                     note.velocity,
+                    note.us_per_tick,
                 )
                 self.playable_list.append(temp_playable)
-
-    def set_tick_duration(self, us_per_tick: float) -> None:
-        self.us_per_tick = us_per_tick
 
     def find_groups(self) -> None:
         self.group_list = PlayableGroupList(self)
@@ -297,9 +307,7 @@ class PlayableNoteList:
     def find_moves(self, key_width: float, acceleration: int, velocity: int) -> None:
         for cluster in self.group_list.cluster_list:
             cluster.set_cluster_list()
-            cluster.find_optimal_moves(
-                self.us_per_tick, key_width, acceleration, velocity
-            )
+            cluster.find_optimal_moves(key_width, acceleration, velocity)
         self.combine_cluster_moves()
 
     def find_locations(self) -> None:
@@ -928,7 +936,7 @@ class PlayableGroupCluster:
             self.cluster_playable += group.playable_group
 
     def find_optimal_moves(
-        self, us_per_tick: float, key_width: float, acceleration: int, velocity: int
+        self, key_width: float, acceleration: int, velocity: int
     ) -> None:
         """
         Find for the entire cluster the optimal moves for each needed move.
@@ -946,7 +954,6 @@ class PlayableGroupCluster:
                         if abs(freed) >= 1:
                             scores[j] = self.cluster_playable[j].move_score(
                                 abs(self.moves[j]) + 1,
-                                us_per_tick,
                                 key_width,
                                 acceleration,
                                 velocity,
@@ -983,13 +990,10 @@ if __name__ == "__main__":
 
     first_staff = music_xml.generate_note_list(first_part)[0]
 
-    music_xml.us_per_division(first_part.id)
-
     note_list = PlayableNoteList(key_map, first_staff)
 
     note_list.find_groups()
     note_list.find_clusters()
-    note_list.set_tick_duration(music_xml.us_per_div)
     note_list.find_moves(keyWidth, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
     note_list.find_time_losses()
