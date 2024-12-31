@@ -2,13 +2,13 @@
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0">
   <work>
-    <work-title>Untitled score</work-title>
+    <work-title>test</work-title>
     </work>
   <identification>
     <creator type="composer">Composer / arranger</creator>
     <encoding>
       <software>MuseScore 4.4.4</software>
-      <encoding-date>2024-12-30</encoding-date>
+      <encoding-date>2024-12-31</encoding-date>
       <supports element="accidental" type="yes"/>
       <supports element="beam" type="yes"/>
       <supports element="print" attribute="new-page" type="yes" value="yes"/>
@@ -66,16 +66,16 @@
     <lyric-font font-family="Edwin" font-size="10"/>
     </defaults>
   <credit page="1">
-    <credit-type>title</credit-type>
-    <credit-words default-x="616.9347" default-y="1511.047129" justify="center" valign="top" font-size="22">Untitled score</credit-words>
-    </credit>
-  <credit page="1">
     <credit-type>subtitle</credit-type>
     <credit-words default-x="616.9347" default-y="1453.897088" justify="center" valign="top" font-size="14">Subtitle</credit-words>
     </credit>
   <credit page="1">
     <credit-type>composer</credit-type>
     <credit-words default-x="1148.144364" default-y="1411.047256" justify="right" valign="bottom">Composer / arranger</credit-words>
+    </credit>
+  <credit page="1">
+    <credit-type>title</credit-type>
+    <credit-words default-x="616.9347" default-y="1511.047129" justify="center" valign="top" font-size="22">Test</credit-words>
     </credit>
   <part-list>
     <score-part id="P1">
@@ -172,6 +172,23 @@
         <type>quarter</type>
         <stem>up</stem>
         <staff>1</staff>
+        <notations>
+          <articulations>
+            <accent/>
+            </articulations>
+          </notations>
+        </note>
+      <note default-x="112.83" default-y="-15">
+        <chord/>
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
         </note>
       <note default-x="142.69" default-y="-25">
         <pitch>
@@ -198,9 +215,9 @@
       <backup>
         <duration>16</duration>
         </backup>
-      <note default-x="82.01" default-y="-127.77">
+      <note default-x="82.01" default-y="-132.77">
         <pitch>
-          <step>E</step>
+          <step>D</step>
           <octave>3</octave>
           </pitch>
         <duration>16</duration>
@@ -253,7 +270,19 @@
             </articulations>
           </notations>
         </note>
+      <note default-x="103.04" default-y="-20">
+        <pitch>
+          <step>B</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>down</stem>
+        <staff>1</staff>
+        </note>
       <note default-x="103.04" default-y="0">
+        <chord/>
         <pitch>
           <step>F</step>
           <octave>5</octave>
@@ -281,7 +310,7 @@
     <measure number="3" width="134.7">
       <direction placement="below">
         <direction-type>
-          <dynamics default-x="8.54" default-y="-63.19" relative-y="-20">
+          <dynamics default-x="8.54" default-y="-68.19" relative-y="-20">
             <fff/>
             </dynamics>
           </direction-type>
@@ -299,7 +328,19 @@
         <stem>down</stem>
         <staff>1</staff>
         </note>
+      <note default-x="43.32" default-y="-30">
+        <pitch>
+          <step>G</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>down</stem>
+        <staff>1</staff>
+        </note>
       <note default-x="43.32" default-y="-10">
+        <chord/>
         <pitch>
           <step>D</step>
           <octave>5</octave>
@@ -312,7 +353,7 @@
         </note>
       <direction placement="below">
         <direction-type>
-          <dynamics default-x="3.09" default-y="-40" relative-x="5.5" relative-y="-37.98">
+          <dynamics default-x="3.09" default-y="-40" relative-x="5.5" relative-y="-37.97">
             <ppp/>
             </dynamics>
           </direction-type>
@@ -330,7 +371,24 @@
         <stem>down</stem>
         <staff>1</staff>
         </note>
+      <note default-x="103.04" default-y="-40">
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
+        <notations>
+          <articulations>
+            <tenuto/>
+            </articulations>
+          </notations>
+        </note>
       <note default-x="103.04" default-y="-20">
+        <chord/>
         <pitch>
           <step>B</step>
           <octave>4</octave>
@@ -338,13 +396,8 @@
         <duration>4</duration>
         <voice>1</voice>
         <type>quarter</type>
-        <stem>down</stem>
+        <stem>up</stem>
         <staff>1</staff>
-        <notations>
-          <articulations>
-            <tenuto/>
-            </articulations>
-          </notations>
         </note>
       <backup>
         <duration>16</duration>
@@ -526,7 +579,31 @@
         <stem>up</stem>
         <staff>1</staff>
         </note>
+      <note default-x="43.32" default-y="-65">
+        <pitch>
+          <step>G</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
+        </note>
+      <note default-x="43.32" default-y="-50">
+        <chord/>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <staff>1</staff>
+        </note>
       <note default-x="43.32" default-y="-40">
+        <chord/>
         <pitch>
           <step>E</step>
           <octave>4</octave>

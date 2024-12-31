@@ -11,14 +11,33 @@ US_PER_MINUTE = 1e6 * 60
 # TODO Look for dynamics in measure
 
 
+def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
+    """
+    Converts a string representation of a pitch to its midi equivilent.
+
+    param letter: The letter of the pitch as a string.
+    param octave: The octave of the pitch as an integer.
+    param alter: An integer which represents if the note is a sharp or flat.
+    """
+    note_offset = ord(letter) - ord("C")
+    octave_offset = (octave + BASE_OCTAVE_OFFSET) * NOTES_IN_OCTAVE
+
+    if note_offset >= 0 and note_offset < 3:
+        missing_half_step = 0
+    elif note_offset >= 3:
+        missing_half_step = 1
+    else:
+        missing_half_step = -13
+
+    return ((note_offset * 2) - missing_half_step) + octave_offset + alter
+
+
 class XMLNote:
     def __init__(
         self,
         note_start: int,
         duration: int,
         midi_pitch: int,
-        velocity: int,
-        us_per_tick: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -39,14 +58,30 @@ class XMLNote:
         The group of pitches that make up this note represented by 
         integer values equal to the midi representation.
         """
-        self.velocity = velocity
+        self.velocity: float = 0
         """The volume/velocity/force the note should be played with represented as an interger."""
-        self.us_per_tick = us_per_tick
+        self.us_per_tick: float = 0
         self.modifiers = modifiers
         """TODO"""
 
+    def set_velocity(self, velocity: float) -> None:
+        """
+        TODO
+        """
+
+        self.velocity = velocity
+
+    def set_us_per_tick(self, us_per_tick: float) -> None:
+        """
+        TODO
+        """
+        self.us_per_tick = us_per_tick
+
     def __str__(self) -> str:
-        return f"Start: {self.note_start}, Duration: {self.duration}, Midi_Pitch: {self.midi_pitch}, Velocity: {self.velocity}"
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, us Per Tick: {self.us_per_tick}"
+
+    def __repr__(self) -> str:
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, us Per Tick: {self.us_per_tick}"
 
 
 class XMLRest:
@@ -54,7 +89,6 @@ class XMLRest:
         self,
         rest_start: int,
         duration: int,
-        us_per_tick: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -64,9 +98,15 @@ class XMLRest:
 
         self.duration = duration
 
-        self.us_per_tick = us_per_tick
+        self.us_per_tick = 0
 
         self.modifiers = modifiers
+
+    def set_us_per_tick(self, us_per_tick: float) -> None:
+        """
+        TODO
+        """
+        self.us_per_tick = us_per_tick
 
 
 class XMLDynamic:
@@ -116,7 +156,7 @@ class XMLNoteList:
         self.notes: list[XMLNote] = []
         """List of XMLNotes for the part id for a specific staff number."""
         self.rests: list[XMLRest] = []
-        """List of XMLRests for hte part id for a specific staff number."""
+        """List of XMLRests for the part id for a specific staff number."""
         self.part_info = part_info
         """Musicxml part id."""
         self.staff_number = staff_number
@@ -161,6 +201,7 @@ class MusicXML:
 
         self.note_start: int = 0
         self.note_duration: int = 0
+        self.previous_duration: int = 0
 
     def find_part_info(self) -> list[PartInfo]:
         """
@@ -261,9 +302,69 @@ class MusicXML:
             slur_end = note_slur[0].attrib["type"]
             modifiers.append(f"slur-{slur_end}")
 
-    def process_note(
-        self, part_info: PartInfo, note: LE._Element, tempo: float, velocity: float
+    def convert_pitch(self, pitch: list[LE._Element]) -> int:
+        """
+        TODO
+        """
+
+        letter = str(pitch[0].xpath("step")[0].text)
+        octave = int(pitch[0].xpath("octave")[0].text)
+        alter = pitch[0].xpath("alter")
+
+        if len(alter) > 0:
+            alter = int(alter[0].text)
+
+        else:
+            alter = 0
+
+        note_midi = pitch_to_midi(letter, octave, alter)
+
+        return note_midi
+
+    def add_note(
+        self, note: LE._Element, note_pitch: list[LE._Element], staff: int
     ) -> None:
+        """
+        TODO
+        """
+        modifiers: list[str] = []
+        note_midi = self.convert_pitch(note_pitch)
+        self.find_articulations(note, modifiers)
+        self.find_notations(note, modifiers)
+        note_chord = note.xpath(".//chord")
+
+        if len(note_chord) > 0:
+            self.note_start -= self.previous_duration
+            new_XMLNote = XMLNote(
+                self.note_start,
+                self.note_duration,
+                note_midi,
+                modifiers,
+            )
+            self.note_lists[staff - 1].append_note(new_XMLNote)
+            self.note_start += self.previous_duration
+            self.note_duration = self.previous_duration
+
+        else:
+            new_XMLNote = XMLNote(
+                self.note_start,
+                self.note_duration,
+                note_midi,
+                modifiers,
+            )
+            self.note_lists[staff - 1].append_note(new_XMLNote)
+            self.note_start += self.note_duration
+
+    def add_rest(self, staff: int) -> None:
+        """
+        TODO
+        """
+
+        new_XMLRest = XMLRest(self.note_start, self.note_duration, [])
+        self.note_lists[staff - 1].append_rest(new_XMLRest)
+        self.note_start += self.note_duration
+
+    def process_note(self, note: LE._Element) -> None:
         """
         Takes in a musicxml note and extracts the component pieces.
 
@@ -271,78 +372,27 @@ class MusicXML:
 
         return: TODO
         """
-        modifiers: list[str] = []
 
-        prev_duration = self.note_duration
+        self.previous_duration = self.note_duration
 
         self.note_duration = int(note.xpath(".//duration")[0].text)
         note_pitch = note.xpath(".//pitch")
         note_rest = note.xpath(".//rest")
         note_staff = note.xpath(".//staff")
 
-        self.find_articulations(note, modifiers)
-        self.find_notations(note, modifiers)
         if len(note_staff) > 0:
             staff = int(note_staff[0].text)
+
         else:
             staff = 1
 
-        # If the note has a pitch then it is actually a note.
         if len(note_pitch) > 0:
-            # Find all the info to convert the note pitch to MIDI pitch.
-            note_letter = note_pitch[0].xpath("step")[0].text
-            note_octave = int(note_pitch[0].xpath("octave")[0].text)
-            note_alter = note_pitch[0].xpath("alter")
+            self.add_note(note, note_pitch, staff)
 
-            if len(note_alter) > 0:
-                note_alter = int(note_alter[0].text)
-            else:
-                note_alter = 0
-            note_midi = pitch_to_midi(note_letter, note_octave, note_alter)
-
-            # Check if the note is part of a chord
-            note_chord = note.xpath(".//chord")
-            if len(note_chord) > 0:
-                self.note_duration -= prev_duration
-
-                us_per_tick = self.us_per_division(tempo, part_info.divisions)
-                # Store all relavent info about the note.
-                new_XMLNote = XMLNote(
-                    self.note_start,
-                    self.note_duration,
-                    note_midi,
-                    velocity,
-                    us_per_tick,
-                    modifiers,
-                )
-                self.note_lists[staff - 1].append_note(new_XMLNote)  # HERE
-
-                self.note_start += prev_duration
-                self.note_duration = prev_duration
-
-            else:
-                # Store all relavent info about the note.
-                us_per_tick = self.us_per_division(tempo, part_info.divisions)
-                new_XMLNote = XMLNote(
-                    self.note_start,
-                    self.note_duration,
-                    note_midi,
-                    velocity,
-                    us_per_tick,
-                    modifiers,
-                )
-                self.note_lists[staff - 1].append_note(new_XMLNote)  # HERE
-
-                self.note_start += self.note_duration
-
-        # Rests don't need to be stored and only move the timing forward.
         elif len(note_rest) > 0:
-            us_per_tick = self.us_per_division(tempo, part_info.divisions)
-            new_XMLRest = XMLRest(self.note_start, self.note_duration, us_per_tick, [])
-            self.note_lists[staff - 1].append_rest(new_XMLRest)
-            self.note_start += self.note_duration
+            self.add_rest(staff)
 
-    def process_backup(self, backup: LE._Element) -> int:
+    def process_backup(self, backup: LE._Element) -> None:
         """
         Takes in a musicxml backup and extracts the backup duration.
 
@@ -350,14 +400,14 @@ class MusicXML:
 
         return: An integer value representing the duration of the backup.
         """
+
         note_duration = int(backup.xpath(".//duration")[0].text)
 
-        return note_duration
+        self.note_start -= note_duration
 
     def process_direction(
         self,
         direction: LE._Element,
-        current_tick: int,
     ) -> None:
         """
         Takes in a musicxml direction and extracts the component pieces.
@@ -375,13 +425,13 @@ class MusicXML:
         if len(dynamic_element) > 0:
             sound_element = direction.xpath(".//sound")[0]
             velocity = float(sound_element.attrib["dynamics"])
-            new_dynamic = XMLDynamic(current_tick, velocity)
+            new_dynamic = XMLDynamic(self.note_start, velocity)
             self.dynamic_list.append(new_dynamic)
 
         elif len(metronome_element) > 0:
             sound_element = direction.xpath(".//sound")[0]
             tempo = float(sound_element.attrib["tempo"])
-            new_tempo = XMLTempo(current_tick, tempo)
+            new_tempo = XMLTempo(self.note_start, tempo)
             self.tempo_list.append(new_tempo)
 
         elif len(wedge_element) > 0:
@@ -398,6 +448,15 @@ class MusicXML:
 
         return float(US_PER_MINUTE / float(divisions_per_minute))
 
+    def list_per_staff(self, part_info: PartInfo) -> None:
+        """
+        TODO
+        """
+
+        for i in range(0, part_info.staff_count):
+            new_note_list = XMLNoteList(part_info.id, i + 1)
+            self.note_lists.append(new_note_list)
+
     def generate_note_list(self, part_info: PartInfo) -> None:
         """TODO Break this function up
         For a given part_info generate a list of XMLNoteLists for each staff contained in a part.
@@ -407,48 +466,44 @@ class MusicXML:
         return: Returns a list of XMLNoteList where each XMLNoteList is for an individual staff.
         """
         part: LE._Element = self.find_part(part_info.id)
+        element_list: list[LE._Element] = part.xpath(".//note|.//backup|.//direction")
+        self.list_per_staff(part_info)
 
-        measure_elements = list[LE._Element](
-            part.xpath(".//note | .//backup | .//direction")
-        )
-
-        for i in range(0, part_info.staff_count):
-            new_note_list = XMLNoteList(part_info.id, i + 1)
-            self.note_lists.append(new_note_list)
-
-        velocity: int = self.find_velocity(part_info.id)
-        tempo: float = 0
-
-        for element in measure_elements:
+        for element in element_list:
             if element.tag == "note":
-                self.process_note(part_info, element, tempo, velocity)
+                self.process_note(element)
 
             elif element.tag == "backup":
-                self.note_start -= self.process_backup(element)
+                self.process_backup(element)
 
             elif element.tag == "direction":
-                (tempo, velocity) = self.process_direction(element, tempo, velocity)
+                self.process_direction(element)
 
+    def add_velocity(self) -> None:
+        """
+        TODO
+        """
 
-def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
-    """
-    Converts a string representation of a pitch to its midi equivilent.
+    def add_us_per_tick(self) -> None:
+        """
+        TODO
+        """
 
-    param letter: The letter of the pitch as a string.
-    param octave: The octave of the pitch as an integer.
-    param alter: An integer which represents if the note is a sharp or flat.
-    """
-    note_offset = ord(letter) - ord("C")
-    octave_offset = (octave + BASE_OCTAVE_OFFSET) * NOTES_IN_OCTAVE
+    def __str__(self):
+        result: str = ""
 
-    if note_offset >= 0 and note_offset < 3:
-        missing_half_step = 0
-    elif note_offset >= 3:
-        missing_half_step = 1
-    else:
-        missing_half_step = -13
+        for item in self.note_lists:
+            result += str(item) + "\n"
 
-    return ((note_offset * 2) - missing_half_step) + octave_offset + alter
+        return result
+
+    def __repr__(self):
+        result: str = ""
+
+        for item in self.note_lists:
+            result += str(item) + "\n"
+
+        return result
 
 
 if __name__ == "__main__":
@@ -465,4 +520,4 @@ if __name__ == "__main__":
 
     music_xml.generate_note_list(first_part)
 
-    print(music_xml.note_lists)
+    print(music_xml)
