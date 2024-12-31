@@ -38,6 +38,8 @@ class XMLNote:
         note_start: int,
         duration: int,
         midi_pitch: int,
+        velocity: float,
+        us_per_tick: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -58,24 +60,11 @@ class XMLNote:
         The group of pitches that make up this note represented by 
         integer values equal to the midi representation.
         """
-        self.velocity: float = 0
+        self.velocity: float = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
-        self.us_per_tick: float = 0
+        self.us_per_tick: float = us_per_tick
         self.modifiers = modifiers
         """TODO"""
-
-    def set_velocity(self, velocity: float) -> None:
-        """
-        TODO
-        """
-
-        self.velocity = velocity
-
-    def set_us_per_tick(self, us_per_tick: float) -> None:
-        """
-        TODO
-        """
-        self.us_per_tick = us_per_tick
 
     def __str__(self) -> str:
         return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, us Per Tick: {self.us_per_tick}"
@@ -89,6 +78,7 @@ class XMLRest:
         self,
         rest_start: int,
         duration: int,
+        us_per_tick: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -102,37 +92,33 @@ class XMLRest:
 
         self.modifiers = modifiers
 
-    def set_us_per_tick(self, us_per_tick: float) -> None:
-        """
-        TODO
-        """
         self.us_per_tick = us_per_tick
 
 
 class XMLDynamic:
     def __init__(
         self,
-        dynamic_start: int,
-        dynamic_velocity: float,
+        start: int,
+        velocity: float,
     ) -> None:
         """
         TODO
         """
 
-        self.dynamic_start = dynamic_start
+        self.start = start
 
-        self.dynamic_velocity = dynamic_velocity
+        self.velocity = velocity
 
 
 class XMLTempo:
-    def __init__(self, tempo_start: int, tempo_value: float):
+    def __init__(self, start: int, tempo: float):
         """
         TODO
         """
 
-        self.tempo_start = tempo_start
+        self.start = start
 
-        self.tempo_value = tempo_value
+        self.tempo = tempo
 
 
 class PartInfo:
@@ -250,26 +236,6 @@ class MusicXML:
             staff_count = 1
         return staff_count
 
-    def find_velocity(self, part_id: str) -> int:
-        """TODO This assumes the entire part has the same velocity/volume which is not always true.
-        Find the velocity/volume for a given part.
-
-        param part_id: A string value for the part id.
-
-        return: Returns an integer value of the musicxml volume.
-        """
-        partlist_element = self.root.find("part-list")
-        part_list = partlist_element.findall(".//score-part")
-        for item in part_list:
-            if item.attrib["id"] == part_id:
-                score_part = item
-                part_velocity = float(score_part.find(".//volume").text)
-
-                return part_velocity
-
-        # TODO Maybe raise an exception. Ideally if volume is missing that can be selected by user.
-        return MISSING_VOLUME
-
     def find_articulations(self, note: LE._Element, modifiers: list[str]):
         """
         TODO
@@ -335,10 +301,15 @@ class MusicXML:
 
         if len(note_chord) > 0:
             self.note_start -= self.previous_duration
+            velocity = self.find_velocity(self.note_start)
+            tempo = self.find_tempo(self.note_start)
+            us_per_tick = self.us_per_division(tempo, 4)
             new_XMLNote = XMLNote(
                 self.note_start,
                 self.note_duration,
                 note_midi,
+                velocity,
+                us_per_tick,
                 modifiers,
             )
             self.note_lists[staff - 1].append_note(new_XMLNote)
@@ -346,10 +317,15 @@ class MusicXML:
             self.note_duration = self.previous_duration
 
         else:
+            velocity = self.find_velocity(self.note_start)
+            tempo = self.find_tempo(self.note_start)
+            us_per_tick = self.us_per_division(tempo, 4)
             new_XMLNote = XMLNote(
                 self.note_start,
                 self.note_duration,
                 note_midi,
+                velocity,
+                us_per_tick,
                 modifiers,
             )
             self.note_lists[staff - 1].append_note(new_XMLNote)
@@ -360,7 +336,9 @@ class MusicXML:
         TODO
         """
 
-        new_XMLRest = XMLRest(self.note_start, self.note_duration, [])
+        tempo = self.find_tempo(self.note_start)
+        us_per_tick = self.us_per_division(tempo, 4)
+        new_XMLRest = XMLRest(self.note_start, self.note_duration, us_per_tick, [])
         self.note_lists[staff - 1].append_rest(new_XMLRest)
         self.note_start += self.note_duration
 
@@ -479,17 +457,35 @@ class MusicXML:
             elif element.tag == "direction":
                 self.process_direction(element)
 
-    def add_velocity(self) -> None:
+    def find_velocity(self, tick: int) -> float:
         """
         TODO
         """
 
-    def add_us_per_tick(self) -> None:
+        filtered_list = [x.velocity for x in self.dynamic_list if x.start <= tick]
+        if filtered_list:
+            result = filtered_list[-1]
+
+        else:
+            raise IndexError(f"No velocity value set for note at tick {tick}")
+
+        return result
+
+    def find_tempo(self, tick: int) -> float:
         """
         TODO
         """
 
-    def __str__(self):
+        filtered_list = [x.tempo for x in self.tempo_list if x.start <= tick]
+        if filtered_list:
+            result = filtered_list[-1]
+
+        else:
+            raise IndexError(f"No tempo value set for note at tick {tick}")
+
+        return result
+
+    def __str__(self) -> str:
         result: str = ""
 
         for item in self.note_lists:
@@ -497,7 +493,7 @@ class MusicXML:
 
         return result
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result: str = ""
 
         for item in self.note_lists:
