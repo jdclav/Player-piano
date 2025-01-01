@@ -1,7 +1,7 @@
 import math
 
 from solenoids import SolenoidIndex
-from musicxml import XMLNoteList
+from musicxml import XMLNoteList, PartInfo
 
 # TODO change to enum
 OUTSIDE_LOCATION = 1
@@ -19,9 +19,13 @@ Inital_duration = 5000
 maxSpeed = 300
 maxAccel = 3000
 
+US_PER_MINUTE = 1e6 * 60
 
-def musicxml_to_midi_velocity(xml_velocity: float) -> int:
-    """TODO"""
+
+def convert_velocity(xml_velocity: float) -> int:
+    """
+    TODO
+    """
 
     default_forte_midi = 90
 
@@ -30,6 +34,29 @@ def musicxml_to_midi_velocity(xml_velocity: float) -> int:
     midi_velocity = default_forte_midi * xml_percentage
 
     return int(midi_velocity)
+
+
+def convert_tick_time(tempo: float, divisions: int) -> float:
+    """
+    TODO
+    """
+    divisions_per_minute = tempo * divisions
+
+    result = float(US_PER_MINUTE / float(divisions_per_minute))
+
+    return result
+
+
+def adjust_tempo(tempo) -> float:
+    """
+    TODO
+    """
+
+
+def adjust_velocity(velocity) -> float:
+    """
+    TODO
+    """
 
 
 def move_closer_to_zero(lst):
@@ -227,7 +254,9 @@ class PlayableNote:
 
 
 class PlayableNoteList:
-    def __init__(self, key_map: SolenoidIndex, note_list: XMLNoteList) -> None:
+    def __init__(
+        self, key_map: SolenoidIndex, note_list: XMLNoteList, part_info: PartInfo
+    ) -> None:
         """
         Takes in a XMLNoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
         to chords.
@@ -237,6 +266,9 @@ class PlayableNoteList:
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
         self.key_map = key_map
+
+        self.part_info = part_info
+
         """
         A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
         hand positions for a giving pitch.
@@ -247,7 +279,9 @@ class PlayableNoteList:
         self.moves: list[int] = []
         """Every move that should take place during this PlayableNoteList as a list of integers."""
 
-        self.process_list(note_list)
+        self.process_list(
+            note_list,
+        )
 
     def process_list(self, note_list: XMLNoteList) -> None:
         """
@@ -261,13 +295,17 @@ class PlayableNoteList:
                 if previous_playable.note_start == note.note_start:
                     previous_playable.add_pitch(note.midi_pitch)
                 else:
+                    true_velocity = convert_velocity(note.velocity)
+                    us_per_tick = convert_tick_time(
+                        note.tempo, self.part_info.divisions
+                    )
                     temp_playable = PlayableNote(
                         self.key_map,
                         note.note_start,
                         note.duration,
                         note.midi_pitch,
-                        note.velocity,
-                        note.us_per_tick,
+                        true_velocity,
+                        us_per_tick,
                     )
                     self.playable_list[-1].set_delay(temp_playable.note_start)
                     self.playable_list.append(temp_playable)
@@ -986,11 +1024,13 @@ if __name__ == "__main__":
 
     music_xml = MusicXML(xml_file)
 
-    first_part = music_xml.part_ids[0]
+    first_part = music_xml.part_info[0]
 
-    first_staff = music_xml.generate_note_list(first_part)[0]
+    music_xml.generate_note_list(first_part)
 
-    note_list = PlayableNoteList(key_map, first_staff)
+    note_list = PlayableNoteList(
+        key_map, music_xml.note_lists[0], music_xml.part_info[0]
+    )
 
     note_list.find_groups()
     note_list.find_clusters()

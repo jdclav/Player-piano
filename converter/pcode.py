@@ -23,7 +23,7 @@ class PlayCommand:
         self,
         hand: Hand,
         note: PlayableNote,
-        # previous_note: PlayableNote,
+        previous_time: float,
     ) -> None:
         """
         A single deploy of the solenoids of a single hand.
@@ -36,7 +36,7 @@ class PlayCommand:
         """The hand the will be using the command."""
         self.note = note
         """The PlayableNote associated with this command."""
-        self.previous_note = previous_note
+        self.previous_time = previous_time
         # """A float value in microseconds from the previous PlayCommand."""
 
         self.hand_parameter: int = 0

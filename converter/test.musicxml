@@ -722,6 +722,15 @@
           <staff-distance>65</staff-distance>
           </staff-layout>
         </print>
+      <direction placement="above" system="only-top">
+        <direction-type>
+          <words>rit.</words>
+          </direction-type>
+        <direction-type>
+          <dashes type="start" number="1"/>
+          </direction-type>
+        <staff>1</staff>
+        </direction>
       <note default-x="60.86" default-y="-75">
         <pitch>
           <step>E</step>
@@ -766,6 +775,12 @@
         <stem>up</stem>
         <staff>1</staff>
         </note>
+      <direction placement="above" system="only-top">
+        <direction-type>
+          <dashes type="stop" number="1"/>
+          </direction-type>
+        <staff>1</staff>
+        </direction>
       <backup>
         <duration>16</duration>
         </backup>

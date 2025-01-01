@@ -4,10 +4,6 @@ import lxml.etree as LE
 NOTES_IN_OCTAVE = 12
 BASE_OCTAVE_OFFSET = 1
 
-MISSING_VOLUME = -1
-
-US_PER_MINUTE = 1e6 * 60
-
 # TODO Look for dynamics in measure
 
 
@@ -39,7 +35,7 @@ class XMLNote:
         duration: int,
         midi_pitch: int,
         velocity: float,
-        us_per_tick: float,
+        tempo: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -62,15 +58,15 @@ class XMLNote:
         """
         self.velocity: float = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
-        self.us_per_tick: float = us_per_tick
+        self.tempo: float = tempo
         self.modifiers = modifiers
         """TODO"""
 
     def __str__(self) -> str:
-        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, us Per Tick: {self.us_per_tick}"
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, Tempo: {self.tempo}"
 
     def __repr__(self) -> str:
-        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, us Per Tick: {self.us_per_tick}"
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, tempo: {self.tempo}"
 
 
 class XMLRest:
@@ -78,7 +74,7 @@ class XMLRest:
         self,
         rest_start: int,
         duration: int,
-        us_per_tick: float,
+        tempo: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -88,11 +84,9 @@ class XMLRest:
 
         self.duration = duration
 
-        self.us_per_tick = 0
-
         self.modifiers = modifiers
 
-        self.us_per_tick = us_per_tick
+        self.tempo = tempo
 
 
 class XMLDynamic:
@@ -288,7 +282,11 @@ class MusicXML:
         return note_midi
 
     def add_note(
-        self, note: LE._Element, note_pitch: list[LE._Element], staff: int
+        self,
+        note: LE._Element,
+        note_pitch: list[LE._Element],
+        staff: int,
+        divisions: int,
     ) -> None:
         """
         TODO
@@ -303,13 +301,12 @@ class MusicXML:
             self.note_start -= self.previous_duration
             velocity = self.find_velocity(self.note_start)
             tempo = self.find_tempo(self.note_start)
-            us_per_tick = self.us_per_division(tempo, 4)
             new_XMLNote = XMLNote(
                 self.note_start,
                 self.note_duration,
                 note_midi,
                 velocity,
-                us_per_tick,
+                tempo,
                 modifiers,
             )
             self.note_lists[staff - 1].append_note(new_XMLNote)
@@ -319,30 +316,28 @@ class MusicXML:
         else:
             velocity = self.find_velocity(self.note_start)
             tempo = self.find_tempo(self.note_start)
-            us_per_tick = self.us_per_division(tempo, 4)
             new_XMLNote = XMLNote(
                 self.note_start,
                 self.note_duration,
                 note_midi,
                 velocity,
-                us_per_tick,
+                tempo,
                 modifiers,
             )
             self.note_lists[staff - 1].append_note(new_XMLNote)
             self.note_start += self.note_duration
 
-    def add_rest(self, staff: int) -> None:
+    def add_rest(self, staff: int, division: int) -> None:
         """
         TODO
         """
 
         tempo = self.find_tempo(self.note_start)
-        us_per_tick = self.us_per_division(tempo, 4)
-        new_XMLRest = XMLRest(self.note_start, self.note_duration, us_per_tick, [])
+        new_XMLRest = XMLRest(self.note_start, self.note_duration, tempo, [])
         self.note_lists[staff - 1].append_rest(new_XMLRest)
         self.note_start += self.note_duration
 
-    def process_note(self, note: LE._Element) -> None:
+    def process_note(self, note: LE._Element, divisions: int) -> None:
         """
         Takes in a musicxml note and extracts the component pieces.
 
@@ -365,10 +360,10 @@ class MusicXML:
             staff = 1
 
         if len(note_pitch) > 0:
-            self.add_note(note, note_pitch, staff)
+            self.add_note(note, note_pitch, staff, divisions)
 
         elif len(note_rest) > 0:
-            self.add_rest(staff)
+            self.add_rest(staff, divisions)
 
     def process_backup(self, backup: LE._Element) -> None:
         """
@@ -398,6 +393,7 @@ class MusicXML:
         direction_type = direction.xpath(".//direction-type")[0]
         dynamic_element = direction_type.xpath(".//dynamics")
         metronome_element = direction_type.xpath(".//metronome")
+        word_element = direction_type.xpath(".//words")
         wedge_element = direction_type.xpath(".//wedge")
 
         if len(dynamic_element) > 0:
@@ -412,19 +408,11 @@ class MusicXML:
             new_tempo = XMLTempo(self.note_start, tempo)
             self.tempo_list.append(new_tempo)
 
-        elif len(wedge_element) > 0:
+        elif len(word_element) > 0:
             """TODO"""
 
-    def us_per_division(self, tempo: float, divisions: int) -> float:
-        """
-        Determines the microseconds per musicxml division as an integer.
-
-        param part_id: A string value for the part id.
-        """
-
-        divisions_per_minute = tempo * divisions
-
-        return float(US_PER_MINUTE / float(divisions_per_minute))
+        elif len(wedge_element) > 0:
+            """TODO"""
 
     def list_per_staff(self, part_info: PartInfo) -> None:
         """
@@ -449,7 +437,7 @@ class MusicXML:
 
         for element in element_list:
             if element.tag == "note":
-                self.process_note(element)
+                self.process_note(element, part_info.divisions)
 
             elif element.tag == "backup":
                 self.process_backup(element)
