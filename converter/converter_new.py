@@ -1,6 +1,6 @@
 import os
 
-from musicxml import MusicXML, NoteList
+from converter.musicxml_old import MusicXML, NoteList
 from playable import PlayableNoteList
 from solenoids import SolenoidIndex
 from constants import Constants
