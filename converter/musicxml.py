@@ -28,14 +28,38 @@ def pitch_to_midi(letter: str, octave: int, alter: int) -> int:
     return ((note_offset * 2) - missing_half_step) + octave_offset + alter
 
 
+"""
+Items to store:
+X position (Visual)
+Y position (Visual)
+Pitch
+    Step (Letter)
+    Octave
+Duration (Ticks)
+Voice
+Type (Visual)
+Dot (Visual)
+Stem (Visual)
+Staff
+Beam Visual
+Tie: Type
+Notation:
+    Slur (Number to seperate?)
+    Articulation
+    Accent
+    Tenuto
+    Staccato
+"""
+
+
 class XMLNote:
     def __init__(
         self,
         note_start: int,
         duration: int,
         midi_pitch: int,
-        velocity: float,
-        tempo: float,
+        # velocity: float,
+        # tempo: float,
         modifiers: list[str],
     ) -> None:
         """
@@ -56,17 +80,23 @@ class XMLNote:
         The group of pitches that make up this note represented by 
         integer values equal to the midi representation.
         """
-        self.velocity: float = velocity
+        # self.velocity: float = velocity
         """The volume/velocity/force the note should be played with represented as an interger."""
-        self.tempo: float = tempo
+        # self.tempo: float = tempo
         self.modifiers = modifiers
         """TODO"""
 
     def __str__(self) -> str:
-        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, Tempo: {self.tempo}"
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, Tempo: {self.tempo}, Modifiers {self.modifiers}"
 
     def __repr__(self) -> str:
-        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, tempo: {self.tempo}"
+        return f"Start: {self.note_start}, Duration: {self.duration}, Midi Pitch: {self.midi_pitch}, Velocity: {self.velocity}, Tempo: {self.tempo}, Modifiers {self.modifiers}"
+
+
+"""
+Part of a note
+Rest
+"""
 
 
 class XMLRest:
@@ -115,6 +145,29 @@ class XMLTempo:
         self.tempo = tempo
 
 
+class XMLModifier:
+    def __init__(self, start: int, modifier: str):
+        """
+        TODO
+        """
+
+        self.start = start
+
+        self.modifier = modifier
+
+
+"""
+TODO TODO TODO
+
+Need to define a backup
+Only has duration
+
+Define Measure:
+
+
+"""
+
+
 class PartInfo:
     def __init__(self, id: str, staff_count: int, divisions: int) -> None:
         """
@@ -125,7 +178,7 @@ class PartInfo:
         self.divisions = divisions
 
 
-class XMLNoteList:
+class XMLStaffList:
     def __init__(self, part_info: PartInfo, staff_number: int) -> None:
         """
         A list of XMLNotes for a given part id and staff number.
@@ -137,6 +190,13 @@ class XMLNoteList:
         """List of XMLNotes for the part id for a specific staff number."""
         self.rests: list[XMLRest] = []
         """List of XMLRests for the part id for a specific staff number."""
+
+        self.tempos: list[XMLTempo] = []
+
+        self.dynamics: list[XMLDynamic] = []
+
+        self.modifiers: list[XMLDynamic] = []
+
         self.part_info = part_info
         """Musicxml part id."""
         self.staff_number = staff_number
@@ -149,6 +209,15 @@ class XMLNoteList:
     def append_rest(self, rest: XMLRest) -> None:
         """Append a XMLNote to notes."""
         self.rests.append(rest)
+
+    def append_tempo(self, tempo: XMLTempo) -> None:
+        self.tempos.append(tempo)
+
+    def append_dynamic(self, dynamic: XMLDynamic) -> None:
+        self.dynamics.append(dynamic)
+
+    def append_modifier(self, modifier: XMLModifier) -> None:
+        self.modifiers.append(modifier)
 
     def __str__(self) -> str:
         temp = ""
@@ -173,11 +242,7 @@ class MusicXML:
         """The root element from the parsed file."""
         self.part_info = self.find_part_info()
         """List of each unique part."""
-        self.note_lists: list[XMLNoteList] = []
-
-        self.tempo_list: list[XMLTempo] = []
-
-        self.dynamic_list: list[XMLDynamic] = []
+        self.note_lists: list[XMLList] = []
 
         self.note_start: int = 0
         self.note_duration: int = 0
@@ -286,12 +351,12 @@ class MusicXML:
         note: LE._Element,
         note_pitch: list[LE._Element],
         staff: int,
-        divisions: int,
     ) -> None:
         """
         TODO
         """
-        modifiers: list[str] = []
+
+        modifiers = []
         note_midi = self.convert_pitch(note_pitch)
         self.find_articulations(note, modifiers)
         self.find_notations(note, modifiers)
@@ -327,17 +392,18 @@ class MusicXML:
             self.note_lists[staff - 1].append_note(new_XMLNote)
             self.note_start += self.note_duration
 
-    def add_rest(self, staff: int, division: int) -> None:
+    def add_rest(self, staff: int) -> None:
         """
         TODO
         """
 
         tempo = self.find_tempo(self.note_start)
-        new_XMLRest = XMLRest(self.note_start, self.note_duration, tempo, [])
+        modifiers = []
+        new_XMLRest = XMLRest(self.note_start, self.note_duration, tempo, modifiers)
         self.note_lists[staff - 1].append_rest(new_XMLRest)
         self.note_start += self.note_duration
 
-    def process_note(self, note: LE._Element, divisions: int) -> None:
+    def process_note(self, note: LE._Element) -> None:
         """
         Takes in a musicxml note and extracts the component pieces.
 
@@ -360,10 +426,10 @@ class MusicXML:
             staff = 1
 
         if len(note_pitch) > 0:
-            self.add_note(note, note_pitch, staff, divisions)
+            self.add_note(note, note_pitch, staff)
 
         elif len(note_rest) > 0:
-            self.add_rest(staff, divisions)
+            self.add_rest(staff)
 
     def process_backup(self, backup: LE._Element) -> None:
         """
@@ -395,6 +461,7 @@ class MusicXML:
         metronome_element = direction_type.xpath(".//metronome")
         word_element = direction_type.xpath(".//words")
         wedge_element = direction_type.xpath(".//wedge")
+        dashes_element = direction_type.xpath(".//dashes")
 
         if len(dynamic_element) > 0:
             sound_element = direction.xpath(".//sound")[0]
@@ -409,10 +476,25 @@ class MusicXML:
             self.tempo_list.append(new_tempo)
 
         elif len(word_element) > 0:
-            """TODO"""
+            word_type: str = word_element[0].text
+
+            direction_type_2 = direction.xpath(".//direction-type")[1]
+            dashes_element = direction.xpath(".//dashes")
+            dashes_type: str = dashes_element[0].attrib["type"]
+
+            modifier = XMLModifier(self.note_start, word_type + dashes_type)
+            self.note_lists(modifier)
 
         elif len(wedge_element) > 0:
-            """TODO"""
+            wedge_type: str = wedge_element[0].attrib["type"]
+            modifier = XMLModifier(self.note_start, wedge_type + "WEDGE")
+            self.modifier_list.append(modifier)
+
+        elif len(dashes_element) > 0:
+            dashes_type: str = dashes_element[0].attrib["type"]
+
+            modifier = XMLModifier(self.note_start, dashes_type)
+            self.modifier_list.append(modifier)
 
     def list_per_staff(self, part_info: PartInfo) -> None:
         """
@@ -437,7 +519,7 @@ class MusicXML:
 
         for element in element_list:
             if element.tag == "note":
-                self.process_note(element, part_info.divisions)
+                self.process_note(element)
 
             elif element.tag == "backup":
                 self.process_backup(element)

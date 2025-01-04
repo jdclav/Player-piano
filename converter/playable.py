@@ -311,13 +311,15 @@ class PlayableNoteList:
                     self.playable_list.append(temp_playable)
 
             else:
+                true_velocity = convert_velocity(note.velocity)
+                us_per_tick = convert_tick_time(note.tempo, self.part_info.divisions)
                 temp_playable = PlayableNote(
                     self.key_map,
                     note.note_start,
                     note.duration,
                     note.midi_pitch,
                     note.velocity,
-                    note.us_per_tick,
+                    us_per_tick,
                 )
                 self.playable_list.append(temp_playable)
 
