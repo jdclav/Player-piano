@@ -30,27 +30,64 @@ Notation:
         Staccato
 """
 
-class Pitch:
-    def __init__ (self, step: str, octave: int):
-        self.step = step
-        self.octave = octave
 
-class Notation:
-    def __init__ (self):
+class XMLTickCounter:
+    def __init__(self, start_tick: int = 0):
+        self.tick = start_tick
+
+    def set_tick(self, tick) -> None:
+        self.tick = tick
+
+    def get_tick(self) -> int:
+        result = self.tick
+        return result
+
+
+class XMLPosition:
+    def __init__(
+        self,
+        x_position: float,
+        y_position: float,
+        x_relative: float = 0.0,
+        y_relative: float = 0.0,
+    ):
+        """
+        TODO
+        """
+
+        self.x_position = x_position
+        self.y_position = y_position
+        self.x_relative = x_relative
+        self.y_relative = y_relative
+
+
+class XMLPitch:
+    def __init__(self):
+        self.step: str = "A"
+        self.alter: float = 0
+        self.octave: int = 0
+
+    def set_pitch(self, pitch: LE._Element) -> None:
+        self.step = pitch.find(".//step").text
+
+        element_list = pitch.xpath(".//alter")
+        if element_list:
+            self.alter = float(element_list[0].text)
+
+        self.octave = int(pitch.find(".//octave").text)
+
+
+class XMLNotation:
+    def __init__(self):
         self.tied: str = ""
         self.slur: str = ""
         self.accent = False
         self.tenuto = False
         self.staccato = False
 
+
 class XMLNote:
-    def __init__(
-        self,
-        start_tick: int,
-        tick_duration: int,
-        staff: int,
-        voice: int,
-    ) -> None:
+    def __init__(self, note: LE._Element, tick: XMLTickCounter) -> None:
         """
         Object that represents a single note/chord from an musicxml file.
 
@@ -60,38 +97,44 @@ class XMLNote:
         param velocity: An integer that represents the volume of the note(s) similar to midi velocity.
         param modifiers: TODO
         """
-        self.start_tick = start_tick
+        self.start_tick = tick.get_tick()
         """The number of musicxml ticks as an integer from the piece start to beginning to play this note."""
-        self.tick_duration = tick_duration
-        """The number of musicxml ticks as an integer from the start of the note to the end of the note."""
-        self.staff: int = staff
-        """TODO"""
-        self.voice: int = voice
-        """TODO"""
-        
-        self.pitch: Pitch = Pitch("", 0) # This is just a default.
 
-        self.rest: bool = False
+        # self.grace = ""
+        # self.cue = ""
+        self.chord = False
+        self.pitch = XMLPitch()
+        # self.unpitched = ""
+        self.rest = False
+        self.duration: int = 0
+        self.tie: list[str] = []
+        # self.instrument = []
+        # self.footnote = ""
+        # self.level = ""
+        self.voice = ""
+        # self.note_type: str
+        # self.dot: bool = False
 
-        self.tie: str = ""
+        # self.stem: str
+        # self.beam: str
 
-        self.notation: Notation = Notation()
+        element_list = note.xpath(".//grace|.//cue")
 
+        if element_list:
+            pass
+        else:
+            element_list = note.xpath(".//pitch|.//unpitched|.//rest")
 
-        #VVV visual only. Not giving a focus
+            match element_list[0].tag:
+                case "pitch":
+                    self.duration = note.find(".//duration").text
+                # case "unpitched":
+                case "rest":
+                    self.duration = note.find(".//duration").text
 
-        self.x_position: float
-        self.y_position: float
-        self.note_type: str
-        self.dot: bool = False
-        self.stem: str 
-        self.beam: str
-
-        
-    def set_pitch(self, pitch: Pitch):
+    def set_pitch(self, pitch: XMLPitch):
         """TODO"""
         self.pitch = pitch
-
 
     def __str__(self) -> str:
         return f"Start: {self.start_tick}, Duration: {self.tick_duration}, Pitch: {self.pitch}"
@@ -101,9 +144,15 @@ class XMLNote:
 
 
 class XMLBackup:
-    def __init__(self, start_tick: int, tick_count: int) -> None:
-        self.start_tick = start_tick
-        self.tick_count = tick_count
+    def __init__(self, backup: LE._Element, tick: XMLTickCounter) -> None:
+        self.start_tick = 0
+        self.tick_count = 0
+
+
+class XMLForward:
+    def __init__(self, forward: LE._Element, tick: XMLTickCounter) -> None:
+        pass
+
 
 class XMLMetronome:
     def __init__(self):
@@ -115,6 +164,7 @@ class XMLMetronome:
         self.beat_unit = ""
         self.per_minute = 0
 
+
 class XMLDynamics:
     def __init__(self):
         self.x_position: float = 0.0
@@ -123,10 +173,10 @@ class XMLDynamics:
         self.y_relative: float = 0.0
         self.dynamic = ""
 
+
 class XMLWedge:
     def __init__(self, wedge_type: str, number):
-
-        self.wedge_type = wedge_type #ENUM?
+        self.wedge_type = wedge_type  # ENUM?
         self.number = number
 
         self.x_position: float = 0.0
@@ -134,20 +184,21 @@ class XMLWedge:
         self.x_relative: float = 0.0
         self.y_relative: float = 0.0
 
+
 class XMLWords:
     def __init__(self, text: str):
         self.text = text
+
 
 class XMLDashes:
     def __init__(self, dashes_type: str, number: int):
         self.dashes_type = dashes_type
         self.number = number
 
+
 class XMLDirection:
     def __init__(self, start_tick: int):
-
         self.start_tick = start_tick
-
 
         self.direction_type = []
 
@@ -155,99 +206,202 @@ class XMLDirection:
 
         self.dynamics = 0
 
-
-
-        #VVV Visual
+        # VVV Visual
         self.placement = ""
 
-class XMLBarline:
-    def __init__(self, style: str, repeat_direction: str):
-        self.style = style #ENUM?
-        self.repeat_direction = repeat_direction #ENUM?
 
-class XMLAttribute:
-    def __init__(self, beat, beat_type):
-        self.beat = beat
-        self.beat_type = beat_type
+class XMLBarline:
+    def __init__(self, barline: LE._Element, tick: XMLTickCounter):
+        self.style = 0  # ENUM?
+        self.repeat_direction = 0  # ENUM?
+
+
+class XMLAttributes:
+    def __init__(self):
+        self.footnote = ""
+        self.level = ""
+        self.divisions = ""
+        self.key = []
+        self.time = []
+        self.staves = ""
+        self.part_symbol = ""
+        self.instruments = ""
+        self.clef = []
+        self.staff_details = []
+        self.measure_style = []
+
+
+class XMLHarmony:
+    def __init__(self):
+        pass
+
+
+class XMLFiguredBase:
+    def __init__(self):
+        pass
+
+
+class XMLPrint:
+    def __init__(self):
+        pass
+
+
+class XMLSound:
+    def __init__(self):
+        self.instrument_change = []
+        self.midi_device = []
+        self.midi_instrument = []
+        self.play = []
+        self.offset = ""
+        self.swing = ""
+
+        self.coda = ""
+        self.dacapo = ""
+        self.dalsegno = ""
+        self.damper_pedal = ""
+        self.divisions = ""
+        self.dynamics = ""
+        self.fine = ""
+        self.forward_repeat = ""
+        self.id = ""
+        self.pizzicato = ""
+        self.segno = ""
+        self.soft_pedal = ""
+        self.sostenuto_pedal = ""
+        self.tempo = ""
+        self.time_only = ""
+        self.tocoda = ""
+
 
 class XMLMeasure:
-    def __init__(self, start_tick: int) -> None:
-        self.start_tick = start_tick
+    def __init__(self, measure: LE._Element, tick: XMLTickCounter) -> None:
+        self.start_tick = tick.get_tick()
+
         self.note_list: list[XMLNote] = []
+
         self.backup_list: list[XMLBackup] = []
 
-        self.position = 0
+        self.forward_list: list[XMLForward] = []
 
-        self.barline_start = ""
-        self.barline_stop = ""
+        self.direction_list: list[XMLDirection] = []
 
-        self.divitions = 0
+        self.attributes_list: list[XMLAttributes] = []
 
-        self.staves = 0
+        # self.harmonty_list: list[XMLHarmony] = []
+        # self.clef = []
+        # self.print = []
+        # self.sound = []
+        self.barline_list = []
+        # self.grouping = []
+        # self.link = []
+        # self.bookmark = []
 
-        self.clef = []
+        children_elements: list[LE._Element] = measure.getchildren()
 
-        self.print = ""
+        for element in children_elements:
+            match element.tag:
+                case "note":
+                    new_note = XMLNote(element, tick)
+                    self.note_list.append(new_note)
+                case "backup":
+                    new_backup = XMLBackup(element, tick)
+                    self.backup_list.append(new_backup)
+                case "forward":
+                    new_forward = XMLForward(element, tick)
+                    self.forward_list.append(new_forward)
+                case "direction":
+                    new_direction = XMLDirection(element, tick)
+                    self.direction_list.append(new_direction)
+                case "attributes":
+                    new_attributes = XMLAttributes(element, tick)
+                    self.attributes_list.append(new_attributes)
+                case "barline":
+                    new_barline = XMLBarline(element, tick)
+                    self.barline_list.append(new_barline)
 
-class PartInfo:
-    def __init__(self, id: str, staff_count: int, divisions: int) -> None:
+        self.number = measure.attrib["number"]
+        # self.id = 0
+        # self.implicit = False
+        # self.non_controlling = False
+        # self.text = ""
+        # self.width = 0
+
+
+class XMLScorePart:
+    def __init__(self, score_part: LE._Element):
         """
-        Object that stores all the information needed to identify the unique part.
+        TODO
         """
-        self.id = id
-        self.staff_count = staff_count
-        self.divisions = divisions
+        # self.identification = ""
+        # self.part_link = ""
+        self.part_name = score_part.find(".//part-name").text  # More info than this
+
+        # self.part_name_display = ""
+
+        element_list = score_part.xpath(".//part-abbreviation")
+        if element_list:
+            self.part_abbrev = element_list[0].text  # More info than this
+
+        # self.part_abbreviation_display = ""
+
+        # self.group = []
+
+        # self.score_instrument = []
+        # self.player = []
+        # self.midi = []
+
+        self.id: str = score_part.attrib["id"]
 
 
-class XMLStaffList:
-    def __init__(self, part_info: PartInfo, staff_number: int) -> None:
-        """
-        A list of XMLNotes for a given part id and staff number.
+class XMLPart:
+    def __init__(self, part: LE._Element) -> None:
+        self.id = part.attrib["id"]
 
-        param part_id: The musicxml part id as a string.
-        param staff_number: The musicxml staff number for a given part id as an integer.
-        """
-        self.notes: list[XMLNote] = []
-        """List of XMLNotes for the part id for a specific staff number."""
-        self.rests: list[XMLRest] = []
-        """List of XMLRests for the part id for a specific staff number."""
+        self.measure_list: list[XMLMeasure] = []
 
-        self.tempos: list[XMLTempo] = []
+        self.process_measures(part)
 
-        self.dynamics: list[XMLDynamic] = []
+    def process_measures(self, part: LE._Element) -> None:
+        measures = part.xpath(".//measure")
 
-        self.modifiers: list[XMLDynamic] = []
+        tick = XMLTickCounter()
 
-        self.part_info = part_info
-        """Musicxml part id."""
-        self.staff_number = staff_number
-        """Musicxml staff number."""
+        for element in measures:
+            new_measure = XMLMeasure(element, tick)
+            self.measure_list.append(new_measure)
 
-    def append_note(self, note: XMLNote) -> None:
-        """Append a XMLNote to notes."""
-        self.notes.append(note)
 
-    def append_rest(self, rest: XMLRest) -> None:
-        """Append a XMLNote to notes."""
-        self.rests.append(rest)
+class XMLPartwise:
+    def __init__(self, root: LE._Element):
+        self.version = ""
+        self.work = ""
+        self.movement_number = ""
+        self.movement_title = ""
+        self.identificaiton = ""
+        self.defaults = ""
+        self.credits = ""
 
-    def append_tempo(self, tempo: XMLTempo) -> None:
-        self.tempos.append(tempo)
+        self.part_list: list[XMLScorePart] = []
 
-    def append_dynamic(self, dynamic: XMLDynamic) -> None:
-        self.dynamics.append(dynamic)
+        self.parts: list[XMLPart] = []
 
-    def append_modifier(self, modifier: XMLModifier) -> None:
-        self.modifiers.append(modifier)
+        self.process_part_list(root)
 
-    def __str__(self) -> str:
-        temp = ""
-        for note in self.notes:
-            temp += str(note) + "\n"
-        return temp
+        self.process_parts(root)
 
-    def __iter__(self):  # TODO Type hint?
-        return iter(self.notes)
+    def process_part_list(self, root: LE._Element) -> None:
+        element_list = root.xpath(".//score-part")
+
+        for element in element_list:
+            new_score_part = XMLScorePart(element)
+            self.part_list.append(new_score_part)
+
+    def process_parts(self, root: LE._Element) -> None:
+        element_list = root.xpath(".//part")
+
+        for element in element_list:
+            new_part = XMLPart(element)
+            self.parts.append(new_part)
 
 
 class MusicXML:
@@ -259,12 +413,21 @@ class MusicXML:
         """
         self.file = LE.parse(path)
         """The parsed file."""
-        self.root = self.file.getroot()
-        """The root element from the parsed file."""
-        self.part_info = self.find_part_info()
-        """List of each unique part."""
-        self.note_lists: list[XMLList] = []
+        root = self.file.getroot()
 
         self.note_start: int = 0
         self.note_duration: int = 0
         self.previous_duration: int = 0
+
+        self.partwise = XMLPartwise(root)
+
+
+if __name__ == "__main__":
+    import os
+
+    current_directory = os.path.dirname(os.path.realpath(__file__))
+    file_name = "test.musicxml"
+
+    xml_file = f"{current_directory}/{file_name}"
+
+    music_xml = MusicXML(xml_file)
