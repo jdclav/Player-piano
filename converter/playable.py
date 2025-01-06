@@ -1,7 +1,7 @@
 import math
 
 from solenoids import SolenoidIndex
-from converter.musicxml_old import XMLNoteList, PartInfo
+from converter.procsss_xml import XMLNoteList, PartInfo
 
 # TODO change to enum
 OUTSIDE_LOCATION = 1
@@ -1013,7 +1013,7 @@ class PlayableGroupCluster:
 if __name__ == "__main__":
     import os
     from constants import Constants
-    from converter.musicxml_old import MusicXML
+    from converter.procsss_xml import MusicXML
 
     constants = Constants()
 

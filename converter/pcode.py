@@ -334,7 +334,7 @@ class MoveList:
 if __name__ == "__main__":
     import os
     from constants import Constants
-    from converter.musicxml_old import MusicXML
+    from converter.procsss_xml import MusicXML
 
     constants = Constants()
 
