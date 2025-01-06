@@ -6,6 +6,7 @@ from generated.musicxml import (
     Forward,
     Tie,
     Direction,
+    DirectionType,
 )
 from xsdata.formats.dataclass.parsers import XmlParser
 from decimal import Decimal
@@ -400,6 +401,12 @@ def extract_tempo(tick_tagged_list: list[tuple]) -> list[tuple]:
     for element in tick_tagged_list:
         if isinstance(element[0], Direction):
             extract_direction_tempo(tempo_list, element[0], element[1])
+
+            for direction_type in element[0].direction_type:
+                if any(
+                    isinstance(x, DirectionType.Words) for x in direction_type.choice
+                ):
+                    pass
 
     return tempo_list
 
