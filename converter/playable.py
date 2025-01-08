@@ -1,7 +1,16 @@
 import math
 
 from solenoids import SolenoidIndex
-from converter.procsss_xml import XMLNoteList, PartInfo
+from procsss_xml import (
+    MusicPiece,
+    TempoList,
+    DynamicList,
+    TaggedNote,
+    tick_tag_note,
+    extract_pitch,
+)
+from generated.musicxml import ScorePart, Note, Rest
+from decimal import Decimal
 
 # TODO change to enum
 OUTSIDE_LOCATION = 1
@@ -21,8 +30,73 @@ maxAccel = 3000
 
 US_PER_MINUTE = 1e6 * 60
 
+NOTES_IN_OCTAVE = 12
+BASE_OCTAVE_OFFSET = 1
 
-def convert_velocity(xml_velocity: float) -> int:
+
+def is_note_chord(note: Note) -> bool:
+    result = any(isinstance(x, Note.Chord) for x in note.choice)
+    return result
+
+
+def is_note_rest(note: Note) -> bool:
+    result = any(isinstance(x, Rest) for x in note.choice)
+    return result
+
+
+def pitch_to_midi(note: Note) -> int:
+    """
+    Converts a string representation of a pitch to its midi equivilent.
+
+    param letter: The letter of the pitch as a string.
+    param octave: The octave of the pitch as an integer.
+    param alter: An integer which represents if the note is a sharp or flat.
+    """
+    (step, octave, alter) = extract_pitch(note)
+
+    note_offset = ord(step) - ord("C")
+    octave_offset = (octave + BASE_OCTAVE_OFFSET) * NOTES_IN_OCTAVE
+
+    if note_offset >= 0 and note_offset < 3:
+        missing_half_step = 0
+    elif note_offset >= 3:
+        missing_half_step = 1
+    else:
+        missing_half_step = -13
+
+    result = ((note_offset * 2) - missing_half_step) + octave_offset + int(alter)
+
+    return result
+
+
+def convert_tick_time(tempo: Decimal, divisions: Decimal) -> Decimal:
+    """
+    TODO
+    """
+    divisions_per_minute = tempo * divisions
+
+    result = Decimal(US_PER_MINUTE) / divisions_per_minute
+
+    return result
+
+
+def xml_note_time(
+    tagged_note: TaggedNote,
+    tempo_list: TempoList,
+    divisions: Decimal,
+) -> Decimal:
+    duration_time: Decimal = 0
+
+    note_duration = tick_tag_note(tagged_note.note)
+
+    for i in range(0, int(note_duration)):
+        current_tempo = tempo_list.tempo_at_tick(tagged_note.tick + i)
+        duration_time += convert_tick_time(current_tempo, divisions)
+
+    return duration_time
+
+
+def convert_velocity(xml_velocity: Decimal) -> Decimal:
     """
     TODO
     """
@@ -33,30 +107,16 @@ def convert_velocity(xml_velocity: float) -> int:
 
     midi_velocity = default_forte_midi * xml_percentage
 
-    return int(midi_velocity)
+    return midi_velocity
 
 
-def convert_tick_time(tempo: float, divisions: int) -> float:
-    """
-    TODO
-    """
-    divisions_per_minute = tempo * divisions
+def xml_dynamic(tagged_note: TaggedNote, dynamic_list: DynamicList) -> int:
+    dynamic = dynamic_list.dynamic_at_tick(tagged_note.tick)
+    velocity = convert_velocity(dynamic)
 
-    result = float(US_PER_MINUTE / float(divisions_per_minute))
+    # TODO Account for accents for adjucting velocity
 
-    return result
-
-
-def adjust_tempo(tempo) -> float:
-    """
-    TODO
-    """
-
-
-def adjust_velocity(velocity) -> float:
-    """
-    TODO
-    """
+    return int(velocity)
 
 
 def move_closer_to_zero(lst):
@@ -83,11 +143,10 @@ class PlayableNote:
     def __init__(
         self,
         key_map: SolenoidIndex,
-        note_start: int,
-        duration: int,
+        note_start: Decimal,
+        duration: Decimal,
         midi_pitch: int,
         velocity: int,
-        us_per_tick: int,
     ) -> None:
         """
         Holds all the information for a single playable set of notes. This could be a single key or a chord.
@@ -118,9 +177,7 @@ class PlayableNote:
         hand positions for a giving pitch.
         """
 
-        self.us_per_tick = us_per_tick
-
-        self.next_delay: int = 0
+        self.next_delay: Decimal = 0
         """An integer value of musicxml ticks until the next note starts. Zero means there is no next note."""
 
         new_locations = self.key_map.playable_for_pitch(midi_pitch)
@@ -170,7 +227,7 @@ class PlayableNote:
         """
         return min(self.possible_locations)
 
-    def set_delay(self, next_start: int) -> None:
+    def set_delay(self, next_start: Decimal) -> None:
         """TODO Might remove"""
         self.next_delay = next_start - self.note_start
 
@@ -205,10 +262,10 @@ class PlayableNote:
         score_time = (
             travel_time(distance_mm, acceleration, velociy) + actuationTime
         )  # TODO This needs to not be a file constant. This should be a config value.
-        spare_time = (self.next_delay - self.duration) * self.us_per_tick
+        spare_time = self.next_delay - self.duration
         if score_time >= spare_time:
-            real_score_time = score_time - spare_time
-            note_time = self.duration * self.us_per_tick
+            real_score_time = Decimal(score_time) - spare_time
+            note_time = self.duration
             score = real_score_time / note_time
             return score
         else:
@@ -255,7 +312,11 @@ class PlayableNote:
 
 class PlayableNoteList:
     def __init__(
-        self, key_map: SolenoidIndex, note_list: XMLNoteList, part_info: PartInfo
+        self,
+        key_map: SolenoidIndex,
+        processed_xml: MusicPiece,
+        score_part: ScorePart,
+        staff: int,
     ) -> None:
         """
         Takes in a XMLNoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
@@ -267,8 +328,6 @@ class PlayableNoteList:
         """
         self.key_map = key_map
 
-        self.part_info = part_info
-
         """
         A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
         hand positions for a giving pitch.
@@ -279,48 +338,71 @@ class PlayableNoteList:
         self.moves: list[int] = []
         """Every move that should take place during this PlayableNoteList as a list of integers."""
 
-        self.process_list(
-            note_list,
-        )
+        self.divisions = processed_xml.part_divisions(score_part)
 
-    def process_list(self, note_list: XMLNoteList) -> None:
+        xml_notes = processed_xml.tick_tag_notes(score_part, staff)
+
+        dynamic_list = processed_xml.find_dynamic_list(score_part)
+        tempo_list = processed_xml.tempo_list
+
+        self.process_list(xml_notes, tempo_list, dynamic_list)
+
+    def process_list(
+        self,
+        note_list: list[TaggedNote],
+        tempo_list: TempoList,
+        dynamic_list: DynamicList,
+    ) -> None:
         """
         Processes the note_list into a list of PlayableNotes.
 
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
-        for note in note_list:
-            if self.playable_list:
+        current_us_time = Decimal(0)
+
+        for tagged_note in note_list:
+            if is_note_rest(tagged_note.note):
+                current_us_time += xml_note_time(
+                    tagged_note, tempo_list, self.divisions
+                )
+            elif self.playable_list:
                 previous_playable = self.playable_list[-1]
-                if previous_playable.note_start == note.note_start:
-                    previous_playable.add_pitch(note.midi_pitch)
+
+                midi_pitch = pitch_to_midi(tagged_note.note)
+
+                if is_note_chord(tagged_note.note):
+                    previous_playable.add_pitch(midi_pitch)
+
                 else:
-                    true_velocity = convert_velocity(note.velocity)
-                    us_per_tick = convert_tick_time(
-                        note.tempo, self.part_info.divisions
+                    velocity = xml_dynamic(tagged_note, dynamic_list)
+                    note_duration = xml_note_time(
+                        tagged_note, tempo_list, self.divisions
                     )
+
                     temp_playable = PlayableNote(
                         self.key_map,
-                        note.note_start,
-                        note.duration,
-                        note.midi_pitch,
-                        true_velocity,
-                        us_per_tick,
+                        current_us_time,
+                        note_duration,
+                        midi_pitch,
+                        velocity,
                     )
+                    current_us_time += note_duration
                     self.playable_list[-1].set_delay(temp_playable.note_start)
                     self.playable_list.append(temp_playable)
 
             else:
-                true_velocity = convert_velocity(note.velocity)
-                us_per_tick = convert_tick_time(note.tempo, self.part_info.divisions)
+                velocity = xml_dynamic(tagged_note, dynamic_list)
+                note_duration = xml_note_time(tagged_note, tempo_list, self.divisions)
+                midi_pitch = pitch_to_midi(tagged_note.note)
+
                 temp_playable = PlayableNote(
                     self.key_map,
-                    note.note_start,
-                    note.duration,
-                    note.midi_pitch,
-                    note.velocity,
-                    us_per_tick,
+                    current_us_time,
+                    note_duration,
+                    midi_pitch,
+                    velocity,
                 )
+                current_us_time += note_duration
                 self.playable_list.append(temp_playable)
 
     def find_groups(self) -> None:
@@ -1013,7 +1095,6 @@ class PlayableGroupCluster:
 if __name__ == "__main__":
     import os
     from constants import Constants
-    from converter.procsss_xml import MusicXML
 
     constants = Constants()
 
@@ -1024,15 +1105,11 @@ if __name__ == "__main__":
 
     xml_file = f"{current_directory}/{file_name}"
 
-    music_xml = MusicXML(xml_file)
+    processed_xml = MusicPiece(xml_file)
 
-    first_part = music_xml.part_info[0]
+    score_part = processed_xml.parts_list[0]
 
-    music_xml.generate_note_list(first_part)
-
-    note_list = PlayableNoteList(
-        key_map, music_xml.note_lists[0], music_xml.part_info[0]
-    )
+    note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
 
     note_list.find_groups()
     note_list.find_clusters()

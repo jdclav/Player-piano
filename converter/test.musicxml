@@ -605,6 +605,12 @@
         </note>
       </measure>
     <measure number="6" width="150.12">
+      <direction placement="below">
+        <direction-type>
+          <wedge type="diminuendo" default-y="-91.01" number="1"/>
+          </direction-type>
+        <staff>1</staff>
+        </direction>
       <note default-x="13.46" default-y="-45">
         <pitch>
           <step>D</step>
@@ -676,6 +682,12 @@
       <direction placement="above" system="only-top">
         <direction-type>
           <dashes type="stop" number="1"/>
+          </direction-type>
+        <staff>1</staff>
+        </direction>
+      <direction placement="below">
+        <direction-type>
+          <wedge type="stop" number="1"/>
           </direction-type>
         <staff>1</staff>
         </direction>
