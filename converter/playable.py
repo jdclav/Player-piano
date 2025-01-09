@@ -22,7 +22,7 @@ LEFT_DIRECTION = 1
 RIGHT_DIRECTION = 2
 UNKNOWN_DIRECTION = 3
 
-keyWidth = 23.2
+KEYWIDTH = 23.2
 actuationTime = 50000
 Inital_duration = 5000
 maxSpeed = 300
@@ -238,7 +238,7 @@ class PlayableNote:
         param time_loss: A float value that represents the total time removed
         from the playing duration for things like moves and solenoid retracts
         """
-        self.time_loss = time_loss
+        self.time_loss = Decimal(time_loss)
 
     def move_score(
         self,
@@ -445,7 +445,7 @@ class PlayableNoteList:
     def find_time_losses(self) -> None:
         for i in range(0, len(self.moves)):
             self.playable_list[i].find_time_loss(
-                abs(self.moves[i]), keyWidth, maxAccel, maxSpeed
+                abs(self.moves[i]), KEYWIDTH, maxAccel, maxSpeed
             )
 
     def __iter__(self) -> list[PlayableNote]:
@@ -1113,7 +1113,7 @@ if __name__ == "__main__":
 
     note_list.find_groups()
     note_list.find_clusters()
-    note_list.find_moves(keyWidth, constants.max_acceleration, constants.max_velocity)
+    note_list.find_moves(KEYWIDTH, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
     note_list.find_time_losses()
 

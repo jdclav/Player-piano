@@ -4,18 +4,28 @@ from solenoids import SolenoidIndex
 from playable import PlayableNote, PlayableNoteList
 from constants import base_18
 
+"""
+TODO TODO TODO
+
+general changes to pcode.
+
+Various parameters for the pcode file should show up after the s. These should be parameters that need to be adhered to for the pcode to operate correctly
+ex. retract time, key width, key count, velocity, acceleration, etc
+
+Time should be changed from relative us between each command to an absolute time. The time should be a uint64 since that can hold over 500,000 years worth of time.
+
+"""
+
 # TODO temp constants
 RETRACT_TIME = 50000
 KEY_WIDTH = 23.2
 START_DELAY = 5000
+KEYWIDTH = 23.2
 
 
 class Hand(Enum):
     RIGHT = 0
     LEFT = 1
-
-    def __int__(self):
-        return self.value
 
 
 class PlayCommand:
@@ -57,7 +67,7 @@ class PlayCommand:
         """
         Convert the hand value to the pcode representation.
         """
-        self.hand_parameter = int(self.hand)
+        self.hand_parameter = self.hand.value
 
     def set_digit_parameter(self, key_map: SolenoidIndex) -> None:
         """
@@ -81,34 +91,29 @@ class PlayCommand:
 
     def set_velocity_paramter(self) -> None:
         """TODO"""
-        self.velocity_parameter = (
-            10  # TODO current velocity is not tracked correctly str(self.note.velocity)
-        )
+        self.velocity_parameter = self.note.velocity
 
-    def set_time_parameter(self, previous_note: PlayableNote) -> None:
+    def set_time_parameter(self) -> None:
         """TODO"""
-        relative_start = self.note.note_start - previous_note.note_start
-        relative_start_us = relative_start * previous_note.us_per_tick
+        relative_start_us = self.note.note_start - self.previous_time
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
         self.time_parameter = relative_start_ms
 
     def set_duration_parameter(self) -> None:
         """TODO"""
-        ideal_duration_us = self.note.duration * self.note.us_per_tick
+        ideal_duration_us = self.note.duration
         actual_duration_us = ideal_duration_us - self.note.time_loss
         # TODO adapt from ms to ms in the future
         actual_duration_ms = int(actual_duration_us / 1000)
         self.duration_parameter = actual_duration_ms
 
-    def generate_pcode(
-        self, previous_note: PlayableNote, key_map: SolenoidIndex
-    ) -> None:
+    def generate_pcode(self, key_map: SolenoidIndex) -> None:
         """TODO"""
         self.set_hand_paramter()
         self.set_digit_parameter(key_map)
         self.set_velocity_paramter()
-        self.set_time_parameter(previous_note)
+        self.set_time_parameter()
         self.set_duration_parameter()
         self.pcode += "d"
         self.pcode += " s"
@@ -178,7 +183,7 @@ class MoveCommand:
         """
         Convert the hand value to the pcode representation.
         """
-        self.hand_parameter = int(self.hand)
+        self.hand_parameter = self.hand.value
 
     def set_position_parameter(self, key_width: float) -> None:
         """TODO"""
@@ -191,7 +196,7 @@ class MoveCommand:
         """TODO"""
 
         abs_start_us = (
-            (self.note.note_start + self.note.duration) * us_per_tick
+            (self.note.note_start + self.note.duration)
             + retract_time
             - self.note.time_loss
         )
@@ -203,13 +208,12 @@ class MoveCommand:
 
     def set_duration_parameter(
         self,
-        us_per_tick: float,
         retract_time: float,
     ) -> None:
         """TODO"""
-        note_diff_ticks = self.note.next_delay
-        duration_ticks = note_diff_ticks - self.note.duration
-        ideal_duration_us = duration_ticks * us_per_tick
+        note_diff_time = self.note.next_delay
+        duration_ticks = note_diff_time - self.note.duration
+        ideal_duration_us = duration_ticks
         move_duration_us = (ideal_duration_us - retract_time) + self.note.time_loss
         # TODO adapt from ms to ms in the future
         move_duration_ms = int(move_duration_us / 1000)
@@ -222,7 +226,6 @@ class MoveCommand:
 
     def generate_pcode(
         self,
-        us_per_tick: float,
         key_width: float,
         retract_time: float,
     ) -> None:
@@ -233,8 +236,8 @@ class MoveCommand:
         if self.note.note_start == self.next_note.note_start:
             self.set_first_times()
         else:
-            self.set_time_parameter(us_per_tick, retract_time)
-            self.set_duration_parameter(us_per_tick, retract_time)
+            self.set_time_parameter(retract_time)
+            self.set_duration_parameter(retract_time)
 
         self.pcode += "h"
         self.pcode += " s"
@@ -315,9 +318,7 @@ class MoveList:
                     move_command = MoveCommand(
                         hand, self.note_list[i - 1], self.note_list[i], previous_time
                     )
-                    move_command.generate_pcode(
-                        self.us_per_tick, key_width, retract_time
-                    )
+                    move_command.generate_pcode(key_width, retract_time)
 
                     self.move_commands.append(move_command)
 
@@ -334,7 +335,7 @@ class MoveList:
 if __name__ == "__main__":
     import os
     from constants import Constants
-    from converter.procsss_xml import MusicXML
+    from procsss_xml import MusicPiece
 
     constants = Constants()
 
@@ -345,27 +346,22 @@ if __name__ == "__main__":
 
     xml_file = f"{current_directory}/{file_name}"
 
-    music_xml = MusicXML(xml_file)
+    processed_xml = MusicPiece(xml_file)
 
-    first_part = music_xml.part_ids[0]
+    score_part = processed_xml.parts_list[0]
 
-    first_staff = music_xml.generate_note_list(first_part)[0]
-
-    music_xml.us_per_division(first_part.id)
-
-    note_list = PlayableNoteList(key_map, first_staff)
+    note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
 
     note_list.find_groups()
     note_list.find_clusters()
-    note_list.set_tick_duration(music_xml.us_per_div)
-    note_list.find_moves(23.2, constants.max_acceleration, constants.max_velocity)
+    note_list.find_moves(KEYWIDTH, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
     note_list.find_time_losses()
 
-    play_commands = PlayList(note_list, key_map, music_xml.us_per_div)
+    play_commands = PlayList(note_list, key_map)
     play_commands.generate_play_list(Hand.RIGHT)
 
-    move_commands = MoveList(note_list, key_map, music_xml.us_per_div)
+    move_commands = MoveList(note_list, key_map)
     move_commands.generate_move_list(Hand.RIGHT, 23.2, 50000)
 
     print(str(play_commands) + str(move_commands))
