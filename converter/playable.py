@@ -1,5 +1,8 @@
 import math
 
+from decimal import Decimal
+from enum import Enum
+
 from solenoids import SolenoidIndex
 from procsss_xml import (
     MusicPiece,
@@ -10,28 +13,32 @@ from procsss_xml import (
     extract_pitch,
 )
 from generated.musicxml import ScorePart, Note, Rest
-from decimal import Decimal
+
 
 # TODO change to enum
 OUTSIDE_LOCATION = 1
 INSIDE_LOCATION = 0
 
 # TODO change to enum
-NO_DIRECTION = 0
-LEFT_DIRECTION = 1
-RIGHT_DIRECTION = 2
-UNKNOWN_DIRECTION = 3
+
 
 KEYWIDTH = 23.2
-actuationTime = 50000
+actuationTime = 10000
 Inital_duration = 5000
-maxSpeed = 300
-maxAccel = 3000
+maxSpeed = 3000
+maxAccel = 30000
 
 US_PER_MINUTE = 1e6 * 60
 
 NOTES_IN_OCTAVE = 12
 BASE_OCTAVE_OFFSET = 1
+
+
+class Direction(Enum):
+    NONE = 0
+    LEFT = 1
+    RIGHT = 2
+    UNKNOWN = 3
 
 
 def is_note_chord(note: Note) -> bool:
@@ -427,14 +434,14 @@ class PlayableNoteList:
                 )
 
     def find_moves(self, key_width: float, acceleration: int, velocity: int) -> None:
-        for cluster in self.group_list.cluster_list:
+        for i, cluster in enumerate(self.group_list.cluster_list):
             cluster.set_cluster_list()
             cluster.find_optimal_moves(key_width, acceleration, velocity)
         self.combine_cluster_moves()
 
     def find_locations(self) -> None:
         first_group = self.group_list.group_list[0]
-        if first_group.movement_directions[1] == RIGHT_DIRECTION:
+        if first_group.movement_directions[1] == Direction.RIGHT:
             current_location = max(first_group.possible_locations)
         else:
             current_location = min(first_group.possible_locations)
@@ -479,7 +486,7 @@ class PlayableGroup:
         """A list of Playable notes that can be played without any hand movement."""
         self.possible_locations: set[int] = []
         """Set of values that represent each possible location of hand location for this group."""
-        self.movement_directions: list[int] = [UNKNOWN_DIRECTION, UNKNOWN_DIRECTION]
+        self.movement_directions: list[int] = [Direction.UNKNOWN, Direction.UNKNOWN]
         """
         Contains two values. 
         The direction the previous group was and the direction the next group will be.
@@ -586,8 +593,11 @@ class PlayableGroup:
         param distance: An integer representing distance this group can travel to the next group.
         """
         group_length = len(self.playable_group)
-        if self.freed_points[-1][0] == group_length - 1:
-            self.freed_points[-1][1] += distance
+        if self.freed_points:
+            if self.freed_points[-1][0] == group_length - 1:
+                self.freed_points[-1][1] += distance
+            else:
+                self.freed_points.append([group_length - 1, distance])
         else:
             self.freed_points.append([group_length - 1, distance])
 
@@ -642,7 +652,7 @@ class PlayableGroup:
     def group_split(
         self, group: list[PlayableNote], element: int, direction: int
     ) -> list[list[PlayableNote]]:
-        if direction == LEFT_DIRECTION:
+        if direction == Direction.LEFT:
             if max(group[-1].possible_locations) == element:
                 return [group, []]
             for i, item in enumerate(group):
@@ -667,10 +677,10 @@ class PlayableGroup:
         remaining_need = abs(self.absolute_need)
         temp_movement = 0
 
-        if in_direction == NO_DIRECTION:
+        if in_direction == Direction.NONE:
             return
 
-        if in_direction == LEFT_DIRECTION:
+        if in_direction == Direction.LEFT:
             ordered_locations = self.min_locations(True)
             current_group = self.playable_group.copy()
             while (
@@ -691,7 +701,7 @@ class PlayableGroup:
             self.need_points.reverse()
             self.first_need_point(remaining_need)
 
-        elif in_direction == RIGHT_DIRECTION:
+        elif in_direction == Direction.RIGHT:
             ordered_locations = self.max_locations(False)
             current_group = self.playable_group.copy()
             while (
@@ -722,10 +732,10 @@ class PlayableGroup:
         remaining_freed = abs(self.absolute_freed)
         temp_movement = 0
 
-        if out_direction == NO_DIRECTION:
+        if out_direction == Direction.NONE:
             return
 
-        if out_direction == LEFT_DIRECTION:
+        if out_direction == Direction.LEFT:
             ordered_locations = self.min_locations(True)
             current_group = list(reversed(self.playable_group))
             group_length = len(current_group)
@@ -748,7 +758,7 @@ class PlayableGroup:
                         break
             self.last_freed_point(-1 * remaining_freed)
 
-        elif out_direction == RIGHT_DIRECTION:
+        elif out_direction == Direction.RIGHT:
             ordered_locations = self.max_locations(False)
             current_group = list(reversed(self.playable_group))
             group_length = len(current_group)
@@ -833,22 +843,22 @@ class PlayableGroupList:
             current_group = groups[i]
             # Compare groups starting after the first
             if i != 0:
-                previous_low_note = min(previous_group.playable_group[0])
-                current_low_note = min(current_group.playable_group[0])
+                previous_low_note = min(previous_group.possible_locations)
+                current_low_note = min(current_group.possible_locations)
 
                 if previous_low_note < current_low_note:
-                    previous_group.set_out_direction(RIGHT_DIRECTION)
-                    current_group.set_in_direction(LEFT_DIRECTION)
+                    previous_group.set_out_direction(Direction.RIGHT)
+                    current_group.set_in_direction(Direction.LEFT)
                 else:
-                    previous_group.set_out_direction(LEFT_DIRECTION)
-                    current_group.set_in_direction(RIGHT_DIRECTION)
+                    previous_group.set_out_direction(Direction.LEFT)
+                    current_group.set_in_direction(Direction.RIGHT)
 
             elif i == 0:
-                current_group.set_in_direction(NO_DIRECTION)
+                current_group.set_in_direction(Direction.NONE)
 
             previous_group = groups[i]
 
-        current_group.set_out_direction(NO_DIRECTION)
+        current_group.set_out_direction(Direction.NONE)
 
     def find_clusters(self) -> None:
         """
@@ -952,9 +962,9 @@ class PlayableGroupCluster:
 
         return: Returns and integer value as a distance of keys.
         """
-        if current_direction == LEFT_DIRECTION:
+        if current_direction == Direction.LEFT:
             distance = min(current_locations) - max(previous_locations)
-        elif current_direction == RIGHT_DIRECTION:
+        elif current_direction == Direction.RIGHT:
             distance = max(current_locations) - min(previous_locations)
         else:
             raise ValueError("All groups by here should have directions assigned.")
@@ -975,9 +985,9 @@ class PlayableGroupCluster:
 
         return: Returns and integer value as a distance of keys.
         """
-        if current_direction == LEFT_DIRECTION:
+        if current_direction == Direction.LEFT:
             distance = min(current_locations) - min(previous_locations)
-        elif current_direction == RIGHT_DIRECTION:
+        elif current_direction == Direction.RIGHT:
             distance = max(current_locations) - max(previous_locations)
         else:
             raise ValueError("All groups by here should have directions assigned.")
@@ -1028,7 +1038,7 @@ class PlayableGroupCluster:
             index_offset += len(group.playable_group)
 
     def find_cluster_freeds(self) -> None:
-        """Find all the needed moves for this cluster and store then in a single list for each note."""
+        """Find all the freed moves for this cluster and store then in a single list for each note."""
         index_offset: int = 0
         total_moves: int = 0
 
@@ -1113,7 +1123,7 @@ if __name__ == "__main__":
 
     note_list.find_groups()
     note_list.find_clusters()
-    note_list.find_moves(KEYWIDTH, constants.max_acceleration, constants.max_velocity)
+    note_list.find_moves(KEYWIDTH, maxAccel, maxSpeed)
     note_list.find_locations()
     note_list.find_time_losses()
 

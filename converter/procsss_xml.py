@@ -5,7 +5,6 @@ from generated.musicxml import (
     Note,
     Backup,
     Forward,
-    Tie,
     Direction,
     DirectionType,
     Dashes,
@@ -126,6 +125,9 @@ def extract_tempo(tick_tagged_list: list[tuple]) -> TempoList:
             if start_tempo == stop_tempo:
                 stop_tempo = Decimal(round((stop_tempo * 3 / 4)))
             tempo_difference = stop_tempo - start_tempo
+        else:
+            continue
+
         for i in range(0, int(variation_duration) + 1):
             tempo = round((i / (variation_duration)) * tempo_difference) + start_tempo
             tempo_list.append(tempo, variation_start_tick + i)
@@ -193,14 +195,18 @@ def tick_tag_note(note: Note) -> Decimal:
     """"""
     result: Decimal = 0
 
-    if note.grace:
-        result = 0
-    elif any(isinstance(x, Note.Chord) for x in note.choice):
-        result = 0
-    elif any(isinstance(x, Tie) for x in note.choice):
-        result = note.choice[-2]
-    else:
-        result = note.choice[-1]
+    for item in note.choice:
+        if isinstance(item, Decimal):
+            result = item
+
+    # if note.grace:
+    #     result = 0
+    # elif any(isinstance(x, Note.Chord) for x in note.choice):
+    #     result = 0
+    # elif any(isinstance(x, Tie) for x in note.choice):
+    #     result = note.choice[-2]
+    # else:
+    #     result = note.choice[-1]
 
     return result
 
