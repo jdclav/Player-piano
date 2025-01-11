@@ -14,6 +14,7 @@ from procsss_xml import (
 )
 from generated.musicxml import ScorePart, Note, Rest
 
+import optimize
 
 # TODO change to enum
 OUTSIDE_LOCATION = 1
@@ -736,25 +737,32 @@ class PlayableGroup:
             return
 
         if out_direction == Direction.LEFT:
+
             ordered_locations = self.min_locations(True)
             current_group = list(reversed(self.playable_group))
             group_length = len(current_group)
-            while (
-                len(ordered_locations) > 1
-                and len(current_group) > 1
-                and remaining_freed > 0
-            ):
+
+            while (optimize.new_point(ordered_locations, current_group, remaining_freed)):
+
                 target_location = ordered_locations.pop(0)
                 temp_movement += ordered_locations[0] - target_location
                 for i, note in enumerate(current_group):
+
                     min_location = min(note.possible_locations)
+
                     if min_location == target_location:
-                        self.freed_points.append(
-                            [group_length - (i + 1), temp_movement]
-                        )
+
+
+                        self.freed_points.append([group_length - (i + 1), temp_movement])
+
+
+
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
+
+
+
                         break
             self.last_freed_point(-1 * remaining_freed)
 
