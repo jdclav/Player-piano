@@ -8,7 +8,7 @@
     <creator type="composer">Composer / arranger</creator>
     <encoding>
       <software>MuseScore 4.4.4</software>
-      <encoding-date>2025-01-07</encoding-date>
+      <encoding-date>2025-01-11</encoding-date>
       <supports element="accidental" type="yes"/>
       <supports element="beam" type="yes"/>
       <supports element="print" attribute="new-page" type="yes" value="yes"/>
@@ -230,7 +230,7 @@
       <backup>
         <duration>16</duration>
         </backup>
-      <note default-x="82.01" default-y="-132.77">
+      <note default-x="86.97" default-y="-132.77">
         <pitch>
           <step>D</step>
           <octave>3</octave>
@@ -238,6 +238,27 @@
         <duration>16</duration>
         <voice>5</voice>
         <type>whole</type>
+        <staff>2</staff>
+        </note>
+      <backup>
+        <duration>16</duration>
+        </backup>
+      <note default-x="82.97" default-y="-117.77">
+        <pitch>
+          <step>G</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>8</duration>
+        <voice>6</voice>
+        <type>half</type>
+        <stem>down</stem>
+        <staff>2</staff>
+        </note>
+      <note default-x="150.41" default-y="-142.77">
+        <rest/>
+        <duration>8</duration>
+        <voice>6</voice>
+        <type>half</type>
         <staff>2</staff>
         </note>
       </measure>

@@ -23,15 +23,33 @@ INSIDE_LOCATION = 0
 
 
 KEYWIDTH = 23.2
-actuationTime = 10000
+actuationTime = 1000
 Inital_duration = 5000
-maxSpeed = 3000
-maxAccel = 30000
+maxSpeed = 6000
+maxAccel = 60000
 
 US_PER_MINUTE = 1e6 * 60
 
 NOTES_IN_OCTAVE = 12
 BASE_OCTAVE_OFFSET = 1
+
+
+def update_temp_movement(
+    temp_movement: int,
+    ordered_locations: list[int],
+    target_location: int,
+    remaining_movement: int,
+) -> int:
+    """
+    TODO
+    """
+    temp_movement += ordered_locations[0] - target_location
+
+    if abs(temp_movement) > abs(remaining_movement):
+        sign_corrected_movement = math.copysign(remaining_movement, temp_movement)
+        temp_movement = int(sign_corrected_movement)
+
+    return temp_movement
 
 
 class Direction(Enum):
@@ -315,6 +333,80 @@ class PlayableNote:
 
     def __repr__(self) -> str:
         return f"{self.note_start}, {self.duration}, {self.midi_pitches}, {self.velocity, {self.possible_locations}}"
+
+
+def new_point(locations: list[int], group: list[PlayableNote], remaining: int) -> bool:
+    another_location = len(locations) > 1
+    another_group = len(group)
+    another_remaining = remaining > 0
+
+    result = another_location and another_group and another_remaining
+
+    return result
+
+
+def min_locations(playable_group: list[PlayableNote], direction: bool) -> list[int]:
+    """
+    Finds the minimum location for each playable note in either sort direction based
+    on direction parameter.
+
+    param TODO
+    param direction: The direction to sort the returned list. False ascending and true descending
+
+    return: List of integer values of each minimum location sorted based on
+    direction state.
+    """
+    locations: list[int] = []
+
+    for note in playable_group:
+        locations.append(min(note.possible_locations))
+
+    unique_locations = list(set(locations))
+
+    unique_locations.sort(reverse=direction)
+
+    return unique_locations
+
+
+def max_locations(playable_group: list[PlayableNote], direction: bool) -> list[int]:
+    """
+    Finds the maximum location for each playable note in either sort direction based
+    on direction parameter.
+
+    param direction: The direction to sort the returned list. False ascending and
+    true descending
+
+    return: List of integer values of each maximum location sorted based on
+    direction state.
+    """
+    locations: list[int] = []
+
+    for note in playable_group:
+        locations.append(max(note.possible_locations))
+
+    unique_locations = list(set(locations))
+
+    unique_locations.sort(reverse=direction)
+
+    return unique_locations
+
+
+def last_freed_point(
+    freed_points: list[list[int]], distance: int, playable_group: list[PlayableNote]
+) -> None:
+    """TODO Does nothing useful atm.
+    Add the last freed point based on the first note of the next group.
+
+    param distance: An integer representing distance this group can travel to the next group.
+    """
+    group_length = len(playable_group)
+    if freed_points:
+        if freed_points[-1][0] == group_length - 1:
+            freed_points[-1][1] += distance
+        else:
+            freed_points.append([group_length - 1, distance])
+    else:
+        freed_points.append([group_length - 1, distance])
 
 
 class PlayableNoteList:
@@ -676,20 +768,21 @@ class PlayableGroup:
         in_direction = self.movement_directions[0]
         remaining_need = abs(self.absolute_need)
         temp_movement = 0
+        current_group = self.playable_group.copy()
 
         if in_direction == Direction.NONE:
             return
 
         if in_direction == Direction.LEFT:
             ordered_locations = self.min_locations(True)
-            current_group = self.playable_group.copy()
-            while (
-                len(ordered_locations) > 1
-                and len(current_group) > 1
-                and remaining_need > 0
-            ):
+            while new_point(ordered_locations, current_group, remaining_need):
                 target_location = ordered_locations.pop(0)
-                temp_movement += target_location - ordered_locations[0]
+                temp_movement = update_temp_movement(
+                    temp_movement,
+                    ordered_locations,
+                    target_location,
+                    remaining_need,
+                )
                 for i, note in enumerate(current_group):
                     min_location = min(note.possible_locations)
                     if min_location == target_location:
@@ -703,14 +796,14 @@ class PlayableGroup:
 
         elif in_direction == Direction.RIGHT:
             ordered_locations = self.max_locations(False)
-            current_group = self.playable_group.copy()
-            while (
-                len(ordered_locations) > 1
-                and len(current_group) > 1
-                and remaining_need > 0
-            ):
+            while new_point(ordered_locations, current_group, remaining_need):
                 target_location = ordered_locations.pop(0)
-                temp_movement += target_location - ordered_locations[0]
+                temp_movement = update_temp_movement(
+                    temp_movement,
+                    ordered_locations,
+                    target_location,
+                    remaining_need,
+                )
                 for i, note in enumerate(current_group):
                     max_location = max(note.possible_locations)
                     if max_location == target_location:
@@ -731,27 +824,27 @@ class PlayableGroup:
         out_direction = self.movement_directions[1]
         remaining_freed = abs(self.absolute_freed)
         temp_movement = 0
+        current_group = list(reversed(self.playable_group))
+        group_length = len(current_group)
 
         if out_direction == Direction.NONE:
             return
 
         if out_direction == Direction.LEFT:
-            ordered_locations = self.min_locations(True)
-            current_group = list(reversed(self.playable_group))
-            group_length = len(current_group)
-            while (
-                len(ordered_locations) > 1
-                and len(current_group) > 1
-                and remaining_freed > 0
-            ):
+            ordered_locations = min_locations(self.playable_group, True)
+            while new_point(ordered_locations, current_group, remaining_freed):
                 target_location = ordered_locations.pop(0)
-                temp_movement += ordered_locations[0] - target_location
+                temp_movement = update_temp_movement(
+                    temp_movement,
+                    ordered_locations,
+                    target_location,
+                    remaining_freed,
+                )
                 for i, note in enumerate(current_group):
                     min_location = min(note.possible_locations)
                     if min_location == target_location:
-                        self.freed_points.append(
-                            [group_length - (i + 1), temp_movement]
-                        )
+                        point_location = group_length - (i + 1)
+                        self.freed_points.append([point_location, temp_movement])
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
@@ -759,27 +852,26 @@ class PlayableGroup:
             self.last_freed_point(-1 * remaining_freed)
 
         elif out_direction == Direction.RIGHT:
-            ordered_locations = self.max_locations(False)
-            current_group = list(reversed(self.playable_group))
-            group_length = len(current_group)
-            while (
-                len(ordered_locations) > 1
-                and len(current_group) > 1
-                and remaining_freed > 0
-            ):
+            ordered_locations = max_locations(self.playable_group, False)
+            while new_point(ordered_locations, current_group, remaining_freed):
                 target_location = ordered_locations.pop(0)
-                temp_movement += ordered_locations[0] - target_location
+                temp_movement = update_temp_movement(
+                    temp_movement,
+                    ordered_locations,
+                    target_location,
+                    remaining_freed,
+                )
                 for i, note in enumerate(current_group):
                     max_location = max(note.possible_locations)
                     if max_location == target_location:
-                        self.freed_points.append(
-                            [group_length - (i + 1), temp_movement]
-                        )
+                        point_location = group_length - (i + 1)
+                        self.freed_points.append([point_location, temp_movement])
                         current_group = current_group[0:i]
                         remaining_freed -= abs(temp_movement)
                         temp_movement = 0
                         break
             self.last_freed_point(remaining_freed)
+
         else:
             raise (TypeError("Direction not specified."))
 
