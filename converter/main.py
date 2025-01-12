@@ -1,6 +1,6 @@
 import os
 from constants import Constants
-from musicxml import MusicXML
+from procsss_xml import MusicPiece
 from playable import PlayableNoteList
 from solenoids import SolenoidIndex
 from pcode import PlayList, MoveList, Hand
@@ -19,28 +19,23 @@ file_name = "test.musicxml"
 
 xml_file = f"{current_directory}/{file_name}"
 
-music_xml = MusicXML(xml_file)
+processed_xml = MusicPiece(xml_file)
 
-first_part = music_xml.part_ids[0]
+score_part = processed_xml.parts_list[0]
 
-first_staff = music_xml.generate_note_list(first_part)[0]
-
-music_xml.us_per_division(first_part.id)
-
-note_list = PlayableNoteList(key_map, first_staff)
+note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
 
 note_list.find_groups()
 note_list.find_clusters()
-note_list.set_tick_duration(music_xml.us_per_div)
-note_list.find_moves(23.2, constants.max_acceleration, constants.max_velocity)
+note_list.find_moves(KEY_WIDTH, constants.max_acceleration, constants.max_velocity)
 note_list.find_locations()
 note_list.find_time_losses()
 
-play_commands = PlayList(note_list, key_map, music_xml.us_per_div)
+play_commands = PlayList(note_list, key_map)
 play_commands.generate_play_list(Hand.RIGHT)
 
-move_commands = MoveList(note_list, key_map, music_xml.us_per_div)
-move_commands.generate_move_list(Hand.RIGHT, KEY_WIDTH, RETRACT_TIME)
+move_commands = MoveList(note_list, key_map)
+move_commands.generate_move_list(Hand.RIGHT, 23.2, 50000)
 
 full_pcode = f"s\n{play_commands}{move_commands}e"
 
