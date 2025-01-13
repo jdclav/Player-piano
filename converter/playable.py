@@ -1048,7 +1048,7 @@ class PlayableGroupCluster:
         current group.
         """
         self.cluster.append(new_group)
-        if new_group.movement_directions[1] == 0:
+        if new_group.movement_directions[1] == Direction.NONE:
             return 1
         elif new_group.movement_directions[0] == new_group.movement_directions[1]:
             return 1
