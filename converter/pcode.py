@@ -1,7 +1,7 @@
 from enum import Enum
 
 from solenoids import SolenoidIndex
-from playable import StillNotes, StillNotesList
+from playable import StillNotes, StillNotesList, UniqueNote
 from constants import base_18
 
 """
@@ -21,6 +21,10 @@ RETRACT_TIME = 50000
 KEY_WIDTH = 23.2
 START_DELAY = 5000
 KEYWIDTH = 23.2
+
+
+def check_chord(unique_notes: list[UniqueNote]):
+    pass
 
 
 class Hand(Enum):
@@ -266,11 +270,12 @@ class PlayList:
 
     def generate_play_list(self, hand: Hand) -> None:
         previous_time: float = 0
-        for note in self.note_list.playable_list:
-            play_command = PlayCommand(hand, note, previous_time)
-            play_command.generate_pcode(self.key_map)
-            self.play_commands.append(play_command)
-            previous_time = note.note_start
+        for still_note in self.note_list.playable_list:
+            for unique_note in still_note.unique_notes:
+                play_command = PlayCommand(hand, still_note, previous_time)
+                play_command.generate_pcode(self.key_map)
+                self.play_commands.append(play_command)
+                previous_time = still_note.note_start
 
         self.play_commands[0].set_first_time(START_DELAY)
 

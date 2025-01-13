@@ -12,7 +12,7 @@ from procsss_xml import (
     tick_tag_note,
     extract_pitch,
 )
-from generated.musicxml import ScorePart, Note, Rest
+from generated.musicxml import ScorePart, Note, Rest, Tie, StartStop
 
 
 # TODO change to enum
@@ -83,14 +83,44 @@ def is_note_chord(note: Note) -> bool:
 
     Things that can make a note "still"
     A chord is still. # Check if this note is a chord and just append to the previous note.
-    A set of tied notes are still. # The first note that has a tie (not tied) start should be treated as locking down every note until a tie stop presents.
-    A set of notes that overlap, regardless of duration, are still. # Check each notes start tick and compare if it falls inside a previous notes duration. If that happens that the note belongs to the previous StillNotes.
 
-    Chords should be treated and truly single notes. Once in the pcode stage they should be recombined into a single deploy command. Notes with the same start time and duration should be treated as chords
+    A set of tied notes are still. # The first note that has a tie (not tied) start should
+    be treated as locking down every note until a tie stop presents.
+
+    A set of notes that overlap, regardless of duration, are still. # Check each notes start
+    tick and compare if it falls inside a previous notes duration. If that happens that the
+    note belongs to the previous StillNotes.
+
+    Chords should be treated and truly single notes. Once in the pcode stage they
+    should be recombined into a single deploy command. Notes with the same start time and
+    duration should be treated as chords
+
     Ties should be treated as a single pcode command for that specific pitch.
     Ugh
     """
+
     result = any(isinstance(x, Note.Chord) for x in note.choice)
+
+    return result
+
+
+def check_note_tie(note: Note) -> str:
+    """TODO"""
+
+    for choice in note.choice:
+        if isinstance(choice, Tie):
+            return choice.type_value
+
+    result = any(isinstance(x, Tie) for x in note.choice)
+
+    return result
+
+
+def does_note_overlap(note: TaggedNote, last_tick: Decimal) -> bool:
+    """TODO"""
+
+    result = note.tick <= last_tick
+
     return result
 
 
@@ -221,6 +251,7 @@ class StillNotes:
         duration: Decimal,
         midi_pitch: int,
         velocity: int,
+        start_tick: Decimal,
     ) -> None:
         """
         Holds all the information for a single playable set of notes. This could be a single key or a chord.
@@ -519,6 +550,8 @@ class StillNotesList:
         """
         current_us_time = Decimal(0)
 
+        processed_notes: list[TaggedNote] = []
+
         for tagged_note in note_list:
             if is_note_rest(tagged_note.note):
                 current_us_time += xml_note_time(
@@ -553,6 +586,7 @@ class StillNotesList:
                         note_duration,
                         midi_pitch,
                         velocity,
+                        tagged_note.tick,
                     )
                     current_us_time += note_duration
                     self.playable_list[-1].set_delay(temp_playable.note_start)
@@ -569,6 +603,7 @@ class StillNotesList:
                     note_duration,
                     midi_pitch,
                     velocity,
+                    tagged_note.tick,
                 )
                 current_us_time += note_duration
                 self.playable_list.append(temp_playable)
