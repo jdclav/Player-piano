@@ -34,7 +34,7 @@ NOTES_IN_OCTAVE = 12
 BASE_OCTAVE_OFFSET = 1
 
 
-def update_temp_movement(
+def update_freed_movement(
     temp_movement: int,
     ordered_locations: list[int],
     target_location: int,
@@ -44,6 +44,24 @@ def update_temp_movement(
     TODO
     """
     temp_movement += ordered_locations[0] - target_location
+
+    if abs(temp_movement) > abs(remaining_movement):
+        sign_corrected_movement = math.copysign(remaining_movement, temp_movement)
+        temp_movement = int(sign_corrected_movement)
+
+    return temp_movement
+
+
+def update_need_movement(
+    temp_movement: int,
+    ordered_locations: list[int],
+    target_location: int,
+    remaining_movement: int,
+) -> int:
+    """
+    TODO
+    """
+    temp_movement += target_location - ordered_locations[0]
 
     if abs(temp_movement) > abs(remaining_movement):
         sign_corrected_movement = math.copysign(remaining_movement, temp_movement)
@@ -828,7 +846,7 @@ class PlayableGroup:
             ordered_locations = self.min_locations(True)
             while new_point(ordered_locations, current_group, remaining_need):
                 target_location = ordered_locations.pop(0)
-                temp_movement = update_temp_movement(
+                temp_movement = update_need_movement(
                     temp_movement,
                     ordered_locations,
                     target_location,
@@ -849,7 +867,7 @@ class PlayableGroup:
             ordered_locations = self.max_locations(False)
             while new_point(ordered_locations, current_group, remaining_need):
                 target_location = ordered_locations.pop(0)
-                temp_movement = update_temp_movement(
+                temp_movement = update_need_movement(
                     temp_movement,
                     ordered_locations,
                     target_location,
@@ -885,7 +903,7 @@ class PlayableGroup:
             ordered_locations = min_locations(self.playable_group, True)
             while new_point(ordered_locations, current_group, remaining_freed):
                 target_location = ordered_locations.pop(0)
-                temp_movement = update_temp_movement(
+                temp_movement = update_freed_movement(
                     temp_movement,
                     ordered_locations,
                     target_location,
@@ -906,7 +924,7 @@ class PlayableGroup:
             ordered_locations = max_locations(self.playable_group, False)
             while new_point(ordered_locations, current_group, remaining_freed):
                 target_location = ordered_locations.pop(0)
-                temp_movement = update_temp_movement(
+                temp_movement = update_freed_movement(
                     temp_movement,
                     ordered_locations,
                     target_location,
@@ -1081,7 +1099,7 @@ class PlayableGroupCluster:
         current group.
         """
         self.cluster.append(new_group)
-        if new_group.movement_directions[1] == 0:
+        if new_group.movement_directions[1] == Direction.NONE:
             return 1
         elif new_group.movement_directions[0] == new_group.movement_directions[1]:
             return 1

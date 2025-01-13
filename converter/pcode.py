@@ -362,6 +362,6 @@ if __name__ == "__main__":
     play_commands.generate_play_list(Hand.RIGHT)
 
     move_commands = MoveList(note_list, key_map)
-    move_commands.generate_move_list(Hand.RIGHT, 23.2, 50000)
+    move_commands.generate_move_list(Hand.RIGHT, 23.2, 1000)
 
     print(str(play_commands) + str(move_commands))
