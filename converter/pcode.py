@@ -1,7 +1,7 @@
 from enum import Enum
 
 from solenoids import SolenoidIndex
-from playable import PlayableNote, PlayableNoteList
+from playable import StillNotes, StillNotesList
 from constants import base_18
 
 """
@@ -32,20 +32,20 @@ class PlayCommand:
     def __init__(
         self,
         hand: Hand,
-        note: PlayableNote,
+        note: StillNotes,
         previous_time: float,
     ) -> None:
         """
         A single deploy of the solenoids of a single hand.
 
         param hand: A hand enum that represents the hand that will process this command.
-        param note: The PlayableNote for this PlayCommand.
+        param note: The StillNotes for this PlayCommand.
         param previous_time: The previous note from this PlayCommand.
         """
         self.hand = hand
         """The hand the will be using the command."""
         self.note = note
-        """The PlayableNote associated with this command."""
+        """The StillNotes associated with this command."""
         self.previous_time = previous_time
         # """A float value in microseconds from the previous PlayCommand."""
 
@@ -147,15 +147,15 @@ class MoveCommand:
     def __init__(
         self,
         hand: Hand,
-        note: PlayableNote,
-        next_note: PlayableNote,
+        note: StillNotes,
+        next_note: StillNotes,
         previous_move_time: float,
     ) -> None:
         """
         A single move of a single hand.
 
         param hand: A hand enum that represents the hand that will process this command.
-        param note: The PlayableNote that should finish immediately prior to this move.
+        param note: The StillNotes that should finish immediately prior to this move.
         param previous_time: An integer value in absolute musicxml ticks for the previous move.
         """
         self.hand = hand
@@ -251,7 +251,7 @@ class MoveCommand:
 
 
 class PlayList:
-    def __init__(self, note_list: PlayableNoteList, key_map: SolenoidIndex) -> None:
+    def __init__(self, note_list: StillNotesList, key_map: SolenoidIndex) -> None:
         """TODO
         An entire list of PlayCommands for a single hand.
         """
@@ -283,7 +283,7 @@ class PlayList:
 
 
 class MoveList:
-    def __init__(self, note_list: PlayableNoteList, key_map: SolenoidIndex) -> None:
+    def __init__(self, note_list: StillNotesList, key_map: SolenoidIndex) -> None:
         """TODO
         An entire list of MoveCommands for a single hand.
         """
@@ -350,7 +350,7 @@ if __name__ == "__main__":
 
     score_part = processed_xml.parts_list[0]
 
-    note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
+    note_list = StillNotesList(key_map, processed_xml, score_part, 1)
 
     note_list.find_groups()
     note_list.find_clusters()

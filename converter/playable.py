@@ -60,6 +60,18 @@ class Direction(Enum):
 
 
 def is_note_chord(note: Note) -> bool:
+    """
+    TODO
+
+    Things that can make a note "still"
+    A chord is still. # Check if this note is a chord and just append to the previous note.
+    A set of tied notes are still. # The first note that has a tie (not tied) start should be treated as locking down every note until a tie stop presents.
+    A set of notes that overlap, regardless of duration, are still. # Check each notes start tick and compare if it falls inside a previous notes duration. If that happens that the note belongs to the previous StillNotes.
+
+    Chords should be treated and truly single notes. Once in the pcode stage they should be recombined into a single deploy command. Notes with the same start time and duration should be treated as chords
+    Ties should be treated as a single pcode command for that specific pitch.
+    Ugh
+    """
     result = any(isinstance(x, Note.Chord) for x in note.choice)
     return result
 
@@ -164,7 +176,26 @@ def travel_time(distance, accel, velocity):
     return totalTime * 1000000
 
 
-class PlayableNote:
+class UniqueNote:
+    def __init__(
+        self,
+        midi_pitch: int,
+        note_start: Decimal,
+        duration: Decimal,
+        velocity: Decimal,
+    ) -> None:
+        """TODO"""
+
+        self.midi_pitch = midi_pitch
+
+        self.note_start = note_start
+
+        self.duration = duration
+
+        self.velocity = velocity
+
+
+class StillNotes:
     def __init__(
         self,
         key_map: SolenoidIndex,
@@ -185,6 +216,9 @@ class PlayableNote:
         param midi_pitch: An integer that represents the pitch of the note equivilent to the midi pitch number.
         param velocity: An integer that represents the volume of the note(s) similar to midi velocity.
         """
+
+        self.unique_notes = [UniqueNote(midi_pitch, note_start, duration, velocity)]
+
         self.note_start = note_start
         """The number of musicxml ticks as an integer from the piece start to beginning to play this note."""
         self.duration = duration
@@ -216,29 +250,37 @@ class PlayableNote:
 
         self.time_loss: float = 0.0
 
-    def add_pitch(self, new_midi_pitch: int) -> int:
+    def add_note(
+        self,
+        midi_pitch: int,
+        note_start: Decimal,
+        duration: Decimal,
+        velocity: Decimal,
+    ) -> int:
         """
         Adds an additional pitch to the note. If the start, duration, and velocity are the same seperate pitches should
-        be stored together in the PlayableNote using this function. If the pitch cannot be played at the same time
+        be stored together in the StillNotes using this function. If the pitch cannot be played at the same time
         as each currently stored note then do not add the note and return 1 else return 0.
 
         param new_midi_pitch: An integer that represents the pitch of the note equivilent to the midi pitch number
-                              that will be added to the PlayableNote.
+                              that will be added to the StillNotes.
         """
-        new_locations = self.key_map.playable_for_pitch(new_midi_pitch)
+        new_locations = self.key_map.playable_for_pitch(midi_pitch)
         filtered_locations = set(filter(lambda item: item is not None, new_locations))
         temp_locations = set(self.possible_locations) & filtered_locations
 
         if temp_locations:
             self.possible_locations = temp_locations
-            self.midi_pitches.append(new_midi_pitch)
+            self.midi_pitches.append(midi_pitch)
+            new_note = UniqueNote(midi_pitch, note_start, duration, velocity)
+            self.unique_notes.append(new_note)
             return INSIDE_LOCATION
         else:
             return OUTSIDE_LOCATION
 
     def max_position(self) -> int:
         """
-        Returns the maximum position for this PlayableNote.
+        Returns the maximum position for this StillNotes.
 
         return: Integer that represents the maximum possible_location.
         """
@@ -246,7 +288,7 @@ class PlayableNote:
 
     def min_position(self) -> int:
         """
-        Returns the minimum position for this PlayableNote.
+        Returns the minimum position for this StillNotes.
 
         return: Integer that represents the minimum possible_location.
         """
@@ -335,7 +377,7 @@ class PlayableNote:
         return f"{self.note_start}, {self.duration}, {self.midi_pitches}, {self.velocity, {self.possible_locations}}"
 
 
-def new_point(locations: list[int], group: list[PlayableNote], remaining: int) -> bool:
+def new_point(locations: list[int], group: list[StillNotes], remaining: int) -> bool:
     another_location = len(locations) > 1
     another_group = len(group)
     another_remaining = remaining > 0
@@ -345,7 +387,7 @@ def new_point(locations: list[int], group: list[PlayableNote], remaining: int) -
     return result
 
 
-def min_locations(playable_group: list[PlayableNote], direction: bool) -> list[int]:
+def min_locations(playable_group: list[StillNotes], direction: bool) -> list[int]:
     """
     Finds the minimum location for each playable note in either sort direction based
     on direction parameter.
@@ -368,7 +410,7 @@ def min_locations(playable_group: list[PlayableNote], direction: bool) -> list[i
     return unique_locations
 
 
-def max_locations(playable_group: list[PlayableNote], direction: bool) -> list[int]:
+def max_locations(playable_group: list[StillNotes], direction: bool) -> list[int]:
     """
     Finds the maximum location for each playable note in either sort direction based
     on direction parameter.
@@ -392,7 +434,7 @@ def max_locations(playable_group: list[PlayableNote], direction: bool) -> list[i
 
 
 def last_freed_point(
-    freed_points: list[list[int]], distance: int, playable_group: list[PlayableNote]
+    freed_points: list[list[int]], distance: int, playable_group: list[StillNotes]
 ) -> None:
     """TODO Does nothing useful atm.
     Add the last freed point based on the first note of the next group.
@@ -409,7 +451,7 @@ def last_freed_point(
         freed_points.append([group_length - 1, distance])
 
 
-class PlayableNoteList:
+class StillNotesList:
     def __init__(
         self,
         key_map: SolenoidIndex,
@@ -418,7 +460,7 @@ class PlayableNoteList:
         staff: int,
     ) -> None:
         """
-        Takes in a XMLNoteList object and converts it to a list of PlayableNotes. PlayableNotes combine same time notes
+        Takes in a XMLNoteList object and converts it to a list of StillNotess. StillNotess combine same time notes
         to chords.
 
         param key_map: A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid
@@ -431,11 +473,11 @@ class PlayableNoteList:
         A SolenoidIndex object that holds the mapping between midi pitch, key location, and valid 
         hand positions for a giving pitch.
         """
-        self.playable_list: list[PlayableNote] = []
-        """The list of every note in the XMLNoteList in the form of PlayableNotes."""
+        self.playable_list: list[StillNotes] = []
+        """The list of every note in the XMLNoteList in the form of StillNotess."""
 
         self.moves: list[int] = []
-        """Every move that should take place during this PlayableNoteList as a list of integers."""
+        """Every move that should take place during this StillNotesList as a list of integers."""
 
         self.divisions = processed_xml.part_divisions(score_part)
 
@@ -453,7 +495,7 @@ class PlayableNoteList:
         dynamic_list: DynamicList,
     ) -> None:
         """
-        Processes the note_list into a list of PlayableNotes.
+        Processes the note_list into a list of StillNotess.
 
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
@@ -470,7 +512,16 @@ class PlayableNoteList:
                 midi_pitch = pitch_to_midi(tagged_note.note)
 
                 if is_note_chord(tagged_note.note):
-                    previous_playable.add_pitch(midi_pitch)
+                    velocity = xml_dynamic(tagged_note, dynamic_list)
+                    note_duration = xml_note_time(
+                        tagged_note, tempo_list, self.divisions
+                    )
+                    previous_playable.add_note(
+                        midi_pitch,
+                        current_us_time,
+                        note_duration,
+                        velocity,
+                    )
 
                 else:
                     velocity = xml_dynamic(tagged_note, dynamic_list)
@@ -478,7 +529,7 @@ class PlayableNoteList:
                         tagged_note, tempo_list, self.divisions
                     )
 
-                    temp_playable = PlayableNote(
+                    temp_playable = StillNotes(
                         self.key_map,
                         current_us_time,
                         note_duration,
@@ -494,7 +545,7 @@ class PlayableNoteList:
                 note_duration = xml_note_time(tagged_note, tempo_list, self.divisions)
                 midi_pitch = pitch_to_midi(tagged_note.note)
 
-                temp_playable = PlayableNote(
+                temp_playable = StillNotes(
                     self.key_map,
                     current_us_time,
                     note_duration,
@@ -513,7 +564,7 @@ class PlayableNoteList:
         self.group_list.process_clusters()
 
     def combine_cluster_moves(self) -> None:
-        """Combine all the cluster moves into a single list that aligns indexwise to the PlayableNoteList."""
+        """Combine all the cluster moves into a single list that aligns indexwise to the StillNotesList."""
         for i, cluster in enumerate(self.group_list.cluster_list):
             if i == 0:
                 self.moves = cluster.moves
@@ -547,7 +598,7 @@ class PlayableNoteList:
                 abs(self.moves[i]), KEYWIDTH, maxAccel, maxSpeed
             )
 
-    def __iter__(self) -> list[PlayableNote]:
+    def __iter__(self) -> list[StillNotes]:
         return iter(self.playable_list)
 
     def __str__(self) -> str:
@@ -562,19 +613,19 @@ class PlayableNoteList:
             temp += repr(playable) + "\n"
         return temp
 
-    def __getitem__(self, i: int) -> PlayableNote:
+    def __getitem__(self, i: int) -> StillNotes:
         return self.playable_list[i]
 
-    def __setitem__(self, i: int, data: PlayableNote) -> None:
+    def __setitem__(self, i: int, data: StillNotes) -> None:
         self.playable_list[i] = data
 
 
 class PlayableGroup:
     def __init__(self) -> None:
         """
-        Represents a group of PlayableNotes that can be played without any hand movement.
+        Represents a group of StillNotess that can be played without any hand movement.
         """
-        self.playable_group: list[PlayableNote] = []
+        self.playable_group: list[StillNotes] = []
         """A list of Playable notes that can be played without any hand movement."""
         self.possible_locations: set[int] = []
         """Set of values that represent each possible location of hand location for this group."""
@@ -608,7 +659,7 @@ class PlayableGroup:
         the number of keys that can be moved after the current note is played.
         """
 
-    def append(self, note: PlayableNote) -> int:
+    def append(self, note: StillNotes) -> int:
         """
         Attempt to add a note to the current group. If the note cannot be played without
         movement in the current group.
@@ -742,8 +793,8 @@ class PlayableGroup:
         return unique_locations
 
     def group_split(
-        self, group: list[PlayableNote], element: int, direction: int
-    ) -> list[list[PlayableNote]]:
+        self, group: list[StillNotes], element: int, direction: int
+    ) -> list[list[StillNotes]]:
         if direction == Direction.LEFT:
             if max(group[-1].possible_locations) == element:
                 return [group, []]
@@ -889,11 +940,11 @@ class PlayableGroup:
 
 
 class PlayableGroupList:
-    def __init__(self, note_list: PlayableNoteList) -> None:
+    def __init__(self, note_list: StillNotesList) -> None:
         """
-        List containing each PlayableGroup for a given PlayableNoteList.
+        List containing each PlayableGroup for a given StillNotesList.
 
-        param note_list: PlayableNoteList that should be grouped by this object.
+        param note_list: StillNotesList that should be grouped by this object.
         """
         self.key_map = note_list.key_map
         """
@@ -903,7 +954,7 @@ class PlayableGroupList:
         self.cluster_list: list[PlayableGroupCluster] = []
         """TODO"""
         self.note_list = note_list
-        """The PlayableNoteList that was grouped in this object."""
+        """The StillNotesList that was grouped in this object."""
         self.group_list: list[PlayableGroup] = []
         """A list of PlayableGroups based on the note_list."""
         self.find_groups()
@@ -1016,8 +1067,8 @@ class PlayableGroupCluster:
         """
         self.moves: list[int] = []
         """A list of locations a move will take place and how much it will move."""
-        self.cluster_playable: list[PlayableNote] = []
-        """A list all the PlayableNotes in the cluster"""
+        self.cluster_playable: list[StillNotes] = []
+        """A list all the StillNotess in the cluster"""
 
     def add_group(self, new_group: PlayableGroup) -> None:
         """
@@ -1211,7 +1262,7 @@ if __name__ == "__main__":
 
     score_part = processed_xml.parts_list[0]
 
-    note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
+    note_list = StillNotesList(key_map, processed_xml, score_part, 1)
 
     note_list.find_groups()
     note_list.find_clusters()
