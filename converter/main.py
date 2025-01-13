@@ -36,7 +36,7 @@ play_commands = PlayList(note_list, key_map)
 play_commands.generate_play_list(Hand.RIGHT)
 
 move_commands = MoveList(note_list, key_map)
-move_commands.generate_move_list(Hand.RIGHT, 23.2, 50000)
+move_commands.generate_move_list(Hand.RIGHT, 23.2, 1000)
 
 full_pcode = f"s\n{play_commands}{move_commands}e"
 
