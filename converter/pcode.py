@@ -23,8 +23,29 @@ START_DELAY = 5000
 KEYWIDTH = 23.2
 
 
-def check_chord(unique_notes: list[UniqueNote]):
-    pass
+def check_chord(unique_notes: list[UniqueNote]) -> list[list[int]]:
+    prev_note: UniqueNote
+    chord_list: list[list[int]] = []
+
+    for i, note in enumerate(unique_notes):
+
+        if i == 0:
+            chord_list.append([i])
+            prev_note = note
+            continue
+
+        else:
+            if (
+                note.note_start == prev_note.note_start
+                and note.duration == prev_note.duration
+            ):
+                chord_list[-1].append(i)
+            else:
+                chord_list.append([i])
+
+        prev_note = note
+
+    return chord_list
 
 
 class Hand(Enum):
@@ -271,11 +292,13 @@ class PlayList:
     def generate_play_list(self, hand: Hand) -> None:
         previous_time: float = 0
         for still_note in self.note_list.playable_list:
-            for unique_note in still_note.unique_notes:
-                play_command = PlayCommand(hand, still_note, previous_time)
-                play_command.generate_pcode(self.key_map)
-                self.play_commands.append(play_command)
-                previous_time = still_note.note_start
+
+            test_list = check_chord(still_note.unique_notes)
+
+            play_command = PlayCommand(hand, still_note, previous_time)
+            play_command.generate_pcode(self.key_map)
+            self.play_commands.append(play_command)
+            previous_time = still_note.note_start
 
         self.play_commands[0].set_first_time(START_DELAY)
 
