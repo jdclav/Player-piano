@@ -1,4 +1,5 @@
 from enum import Enum
+from decimal import Decimal
 
 from solenoids import SolenoidIndex
 from playable import StillNotes, StillNotesList, UniqueNote
@@ -23,14 +24,14 @@ START_DELAY = 5000
 KEYWIDTH = 23.2
 
 
-def check_chord(unique_notes: list[UniqueNote]) -> list[list[int]]:
+def check_chord(unique_notes: list[UniqueNote]) -> list[list[UniqueNote]]:
     prev_note: UniqueNote
     chord_list: list[list[int]] = []
 
     for i, note in enumerate(unique_notes):
 
         if i == 0:
-            chord_list.append([i])
+            chord_list.append([note])
             prev_note = note
             continue
 
@@ -38,10 +39,11 @@ def check_chord(unique_notes: list[UniqueNote]) -> list[list[int]]:
             if (
                 note.note_start == prev_note.note_start
                 and note.duration == prev_note.duration
+                and note.velocity == prev_note.velocity  # TODO Might not be needed.
             ):
-                chord_list[-1].append(i)
+                chord_list[-1].append(note)
             else:
-                chord_list.append([i])
+                chord_list.append([note])
 
         prev_note = note
 
@@ -57,8 +59,11 @@ class PlayCommand:
     def __init__(
         self,
         hand: Hand,
-        note: StillNotes,
+        position: int,
+        # note: StillNotes,
+        notes: list[UniqueNote],
         previous_time: float,
+        time_loss: Decimal,
     ) -> None:
         """
         A single deploy of the solenoids of a single hand.
@@ -69,10 +74,22 @@ class PlayCommand:
         """
         self.hand = hand
         """The hand the will be using the command."""
-        self.note = note
+        self.notes = notes
         """The StillNotes associated with this command."""
         self.previous_time = previous_time
         # """A float value in microseconds from the previous PlayCommand."""
+
+        self.position = position
+
+        self.time_loss = time_loss
+
+        self.pitches = [x.midi_pitch for x in notes]
+
+        self.duration = notes[0].duration
+
+        self.note_start = notes[0].note_start
+
+        self.velocity = notes[0].velocity
 
         self.hand_parameter: int = 0
         """TODO"""
@@ -101,10 +118,10 @@ class PlayCommand:
         param key_map: A SolenoidIndex object that relates pitch, position, and solenoid.
         param position: An integer value for the position in terms of piano keys.
         """
-        for i, pitch in enumerate(self.note.midi_pitches):
+        for i, pitch in enumerate(self.pitches):
             index_list = key_map.index_list[pitch]
             locations_list = index_list.positions
-            solenoid_position = locations_list.index(self.note.position) + (
+            solenoid_position = locations_list.index(self.position) + (
                 index_list.row * 9
             )
             # TODO How to assign "finger" to solenoid
@@ -116,19 +133,21 @@ class PlayCommand:
 
     def set_velocity_paramter(self) -> None:
         """TODO"""
-        self.velocity_parameter = self.note.velocity
+        self.velocity_parameter = self.velocity
 
     def set_time_parameter(self) -> None:
         """TODO"""
-        relative_start_us = self.note.note_start - self.previous_time
+        relative_start_us = self.note_start - self.previous_time
         # TODO adapt from ms to us in the future
         relative_start_ms = int(relative_start_us / 1000)
         self.time_parameter = relative_start_ms
 
     def set_duration_parameter(self) -> None:
         """TODO"""
-        ideal_duration_us = self.note.duration
-        actual_duration_us = ideal_duration_us - self.note.time_loss
+        ideal_duration_us = self.duration
+        actual_duration_us = (
+            ideal_duration_us - self.time_loss
+        )  # TODO TODO TODO How will time_loss work.
         # TODO adapt from ms to ms in the future
         actual_duration_ms = int(actual_duration_us / 1000)
         self.duration_parameter = actual_duration_ms
@@ -291,14 +310,27 @@ class PlayList:
 
     def generate_play_list(self, hand: Hand) -> None:
         previous_time: float = 0
+        time_loss = Decimal(0)
         for still_note in self.note_list.playable_list:
 
-            test_list = check_chord(still_note.unique_notes)
+            chord_list = check_chord(still_note.unique_notes)
 
-            play_command = PlayCommand(hand, still_note, previous_time)
-            play_command.generate_pcode(self.key_map)
-            self.play_commands.append(play_command)
-            previous_time = still_note.note_start
+            for i, chord in enumerate(chord_list):
+                if i == len(chord_list) - 1:
+                    time_loss = still_note.time_loss
+                else:
+                    time_loss = Decimal(0)
+
+                play_command = PlayCommand(
+                    hand,
+                    still_note.position,
+                    chord,
+                    previous_time,
+                    time_loss,
+                )
+                play_command.generate_pcode(self.key_map)
+                self.play_commands.append(play_command)
+                previous_time = still_note.note_start
 
         self.play_commands[0].set_first_time(START_DELAY)
 
