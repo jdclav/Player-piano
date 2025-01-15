@@ -9,10 +9,11 @@ from procsss_xml import (
     TempoList,
     DynamicList,
     TaggedNote,
-    tick_tag_note,
+    find_note_duration,
     extract_pitch,
+    chord_check,
 )
-from generated.musicxml import ScorePart, Note, Rest, Tie, StartStop
+from generated.musicxml import ScorePart, Note, Rest, Tie
 
 
 # TODO change to enum
@@ -76,8 +77,6 @@ class Direction(Enum):
     RIGHT = 2
     UNKNOWN = 3
 
-
-def is_note_chord(note: Note) -> bool:
     """
     TODO
 
@@ -98,10 +97,6 @@ def is_note_chord(note: Note) -> bool:
     Ties should be treated as a single pcode command for that specific pitch.
     Ugh
     """
-
-    result = any(isinstance(x, Note.Chord) for x in note.choice)
-
-    return result
 
 
 def check_note_tie(note: Note) -> str:
@@ -172,7 +167,7 @@ def xml_note_time(
 ) -> Decimal:
     duration_time: Decimal = 0
 
-    note_duration = tick_tag_note(tagged_note.note)
+    note_duration = find_note_duration(tagged_note.note)
 
     for i in range(0, int(note_duration)):
         current_tempo = tempo_list.tempo_at_tick(tagged_note.tick + i)
@@ -549,6 +544,7 @@ class StillNotesList:
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
         current_us_time = Decimal(0)
+        previous_duration = Decimal(0)
 
         processed_notes: list[TaggedNote] = []
 
@@ -562,14 +558,14 @@ class StillNotesList:
 
                 midi_pitch = pitch_to_midi(tagged_note.note)
 
-                if is_note_chord(tagged_note.note):
+                if chord_check(tagged_note.note):
                     velocity = xml_dynamic(tagged_note, dynamic_list)
                     note_duration = xml_note_time(
                         tagged_note, tempo_list, self.divisions
                     )
                     previous_playable.add_note(
                         midi_pitch,
-                        current_us_time,
+                        current_us_time - previous_duration,
                         note_duration,
                         velocity,
                     )
@@ -591,6 +587,7 @@ class StillNotesList:
                     current_us_time += note_duration
                     self.playable_list[-1].set_delay(temp_playable.note_start)
                     self.playable_list.append(temp_playable)
+                    previous_duration = note_duration
 
             else:
                 velocity = xml_dynamic(tagged_note, dynamic_list)
@@ -607,6 +604,7 @@ class StillNotesList:
                 )
                 current_us_time += note_duration
                 self.playable_list.append(temp_playable)
+                previous_duration = note_duration
 
     def find_groups(self) -> None:
         self.group_list = PlayableGroupList(self)

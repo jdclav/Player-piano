@@ -191,37 +191,67 @@ def extract_dynamics(tick_tagged_list: list[tuple]) -> DynamicList:
     return dynamic_list
 
 
-def tick_tag_note(note: Note) -> Decimal:
-    """"""
-    result: Decimal = 0
+def chord_check(note: Note) -> tuple[bool, Decimal]:
+    """TODO"""
+
+    result = any(isinstance(x, Note.Chord) for x in note.choice)
+
+    return result
+
+
+def find_note_duration(note: Note) -> Decimal:
+    """TODO"""
+
+    result = Decimal(0)
 
     for item in note.choice:
         if isinstance(item, Decimal):
             result = item
 
-    # if note.grace:
-    #     result = 0
-    # elif any(isinstance(x, Note.Chord) for x in note.choice):
-    #     result = 0
-    # elif any(isinstance(x, Tie) for x in note.choice):
-    #     result = note.choice[-2]
-    # else:
-    #     result = note.choice[-1]
-
     return result
+
+
+def tick_tag_note(
+    current_tick: Decimal,
+    note: Note,
+    result_list: list[tuple],
+    previous_note_tick: Decimal,
+) -> Decimal:
+    """TODO"""
+
+    duration = find_note_duration(note)
+
+    if chord_check(note):
+        current_tick -= previous_note_tick
+        result_list.pop()
+        result_list.append((note, current_tick))
+        result_tick = current_tick + previous_note_tick
+        result_previous = previous_note_tick
+    else:
+        result_tick = current_tick + duration
+        result_previous = result_tick
+
+    return (result_tick, result_previous)
 
 
 def tick_tag_measure(
     measure: ScorePartwise.Part.Measure, result_list: list[tuple], measure_tick: Decimal
 ) -> Decimal:
     """"""
+    previous_note_tick = Decimal(0)
+
     current_tick = measure_tick
 
     for element in measure.choice:
         result_list.append((element, current_tick))
 
         if isinstance(element, Note):
-            current_tick += tick_tag_note(element)
+            (current_tick, previous_note_tick) = tick_tag_note(
+                current_tick,
+                element,
+                result_list,
+                previous_note_tick,
+            )
 
         elif isinstance(element, Backup):
             current_tick -= element.duration
