@@ -215,21 +215,21 @@ def tick_tag_note(
     current_tick: Decimal,
     note: Note,
     result_list: list[tuple],
-    previous_note_tick: Decimal,
+    previous_note_dur: Decimal,
 ) -> Decimal:
     """TODO"""
 
     duration = find_note_duration(note)
 
     if chord_check(note):
-        current_tick -= previous_note_tick
+        current_tick -= previous_note_dur
         result_list.pop()
         result_list.append((note, current_tick))
-        result_tick = current_tick + previous_note_tick
-        result_previous = previous_note_tick
+        result_tick = current_tick + previous_note_dur
+        result_previous = previous_note_dur
     else:
         result_tick = current_tick + duration
-        result_previous = result_tick
+        result_previous = duration
 
     return (result_tick, result_previous)
 
@@ -238,7 +238,7 @@ def tick_tag_measure(
     measure: ScorePartwise.Part.Measure, result_list: list[tuple], measure_tick: Decimal
 ) -> Decimal:
     """"""
-    previous_note_tick = Decimal(0)
+    previous_note_dur = Decimal(0)
 
     current_tick = measure_tick
 
@@ -246,11 +246,11 @@ def tick_tag_measure(
         result_list.append((element, current_tick))
 
         if isinstance(element, Note):
-            (current_tick, previous_note_tick) = tick_tag_note(
+            (current_tick, previous_note_dur) = tick_tag_note(
                 current_tick,
                 element,
                 result_list,
-                previous_note_tick,
+                previous_note_dur,
             )
 
         elif isinstance(element, Backup):
