@@ -1,7 +1,24 @@
 import numpy as np
+from decimal import Decimal
 
 EMPTY_SOUND = -1
 PENDING_DURATION = 0
+MAX_VELOCITY = 127
+
+
+def velocity_to_scale(velocity: int) -> Decimal:
+    """
+    Takes in a midi compatible velocity value and converts it to a scale factor for a waveform.
+
+    param velocity: An integer value representing a midi velocity
+
+    return: A Decimal value representing a scale factor.
+    """
+
+    # Not sure how midi velocity is supposed to convert.
+    scale_factor = velocity / MAX_VELOCITY
+
+    return scale_factor
 
 
 class Note:
@@ -26,7 +43,9 @@ class Note:
 
         samples = np.linspace(0, duration_in_s, int(duration_in_s * sample_rate), False)
 
-        self.waveform = np.sin(frequency * samples * 2 * np.pi)
+        scale_factor = velocity_to_scale(self.velocity)
+
+        self.waveform = scale_factor * np.sin(frequency * samples * 2 * np.pi)
 
     def __str__(self) -> str:
         return "Note: " + str(self.midi_note) + " Duration: " + str(self.duration)
@@ -81,7 +100,7 @@ class NoteList:
 
         full_samples *= 32767 / np.max(np.abs(full_samples))
 
-        full_samples *= 0.2
+        full_samples *= 0.5
 
         # Converting to 16-bit data
         self.waveform = full_samples.astype(np.int16)

@@ -16,8 +16,8 @@ KEY_COUNT = 76
 SCREEN_OFFSET = 89 - KEY_COUNT
 TOP_ROW_OFFSET = 9
 
-MAX_VELOCITY = 300
-MAX_ACCELERATION = 3000
+MAX_VELOCITY = 3000
+MAX_ACCELERATION = 30000
 
 
 BOTTOM_KEY_TO_MIDI = (
@@ -207,7 +207,7 @@ class PianoFrame:
                     self.middleLine[self.solenoids[sol]] = DEPRESS_BLANK_KEY
                 self.topLine[self.solenoids[sol]] = OPEN_SOLENOID_CHAR
             else:
-                raise ValueError("Maximum location value/index is 16.")
+                raise ValueError("Maximum location value/index is 17.")
         self.frame_time = frame_time
 
     def shift_hand(self, keys_shift: int, frame_time: float = 0) -> None:
@@ -295,8 +295,9 @@ class FrameList:
                     current_command.duration + current_command.longevity
                 )
                 self.audio_frames.append(AudioFrame())
-                self.audio_frames[-1].frame_start = self.piano_state.frame_time
+                self.audio_frames[-1].set_frame_start(self.piano_state.frame_time)
                 self.audio_frames[-1].line_index_to_midi(self.piano_state)
+                self.audio_frames[-1].set_frame_velocity(current_command.force)
                 self.__capture_frame()
 
             elif current_command.command_type == "h":
@@ -323,6 +324,7 @@ class AudioFrame:
         self.frame_start: float = 0
         self.frame_stop: float = 0
         self.duration = 0
+        self.frame_velocity = 0
 
     def line_index_to_midi(self, piano_frame: PianoFrame):
         bottom_indicies = [
@@ -347,3 +349,12 @@ class AudioFrame:
     def set_frame_stop(self, frame_stop: float) -> None:
         self.frame_stop = frame_stop
         self.duration = self.frame_stop - self.frame_start
+
+    def set_frame_velocity(self, frame_velocity: int) -> None:
+        """
+        Sets the objects velocity value to frame_velocity.
+
+        param frame_velocity: An integer value representing the frames midi velocity.
+        """
+
+        self.frame_velocity = frame_velocity
