@@ -24,7 +24,9 @@ def main(stdscr):
 
     for frame in frame_list.audio_frames:
         for note in frame.midi_notes:
-            notes.add_note(note, frame.frame_start, frame.duration, 10)
+            notes.add_note(
+                note, frame.frame_start, frame.duration, frame.frame_velocity
+            )
 
     for i, note in enumerate(notes.note_list):
         if note.duration < 0:
@@ -38,7 +40,8 @@ def main(stdscr):
 
     currentTime = startTime
 
-    for frame in frame_list.frames:
+    for i, frame in enumerate(frame_list.frames):
+        currentTime = round(time.time() * 1000)
         while (currentTime - startTime) < (frame.frame_time / speedMultiply):
             currentTime = round(time.time() * 1000)
 
