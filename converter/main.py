@@ -1,7 +1,7 @@
 import os
 from constants import Constants
 from procsss_xml import MusicPiece
-from playable import PlayableNoteList
+from playable import StillNotesList
 from solenoids import SolenoidIndex
 from pcode import PlayList, MoveList, Hand
 
@@ -16,7 +16,8 @@ constants = Constants()
 key_map = SolenoidIndex(88, constants.first_88_key)
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
-file_name = "moonlight.musicxml"
+# file_name = "moonlight.musicxml"
+file_name = "test.musicxml"
 
 xml_file = f"{current_directory}/{file_name}"
 
@@ -24,7 +25,7 @@ processed_xml = MusicPiece(xml_file)
 
 score_part = processed_xml.parts_list[0]
 
-note_list = PlayableNoteList(key_map, processed_xml, score_part, 1)
+note_list = StillNotesList(key_map, processed_xml, score_part, 1)
 
 note_list.find_groups()
 note_list.find_clusters()
