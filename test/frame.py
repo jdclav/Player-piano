@@ -1,8 +1,9 @@
 import kinematics as kinematics
 import numpy
 from copy import deepcopy
+import decimal
 
-from decode import CommandList
+from decode import CommandList, CommandType
 
 CLOSED_SOLENOID_CHAR = "\u03a6"
 OPEN_SOLENOID_CHAR = "\U0000039f"
@@ -11,13 +12,13 @@ DEPRESS_KEY_CHAR = "\U00002534"
 DEPRESS_BLANK_KEY = "|"
 
 INITIAL_HAND_POSITION = 0
-KEY_WIDTH = 22
-KEY_COUNT = 76
+KEY_WIDTH = decimal.Decimal(23.2)
+KEY_COUNT = 88
 SCREEN_OFFSET = 89 - KEY_COUNT
 TOP_ROW_OFFSET = 9
 
-MAX_VELOCITY = 3000
-MAX_ACCELERATION = 30000
+MAX_VELOCITY = decimal.Decimal(3000)
+MAX_ACCELERATION = decimal.Decimal(30000)
 
 
 BOTTOM_KEY_TO_MIDI = (
@@ -257,7 +258,7 @@ class FrameList:
         self.frames.append(deepcopy(self.piano_state))
 
     def move_hand(self, distance: int):
-        self.movement = kinematics.timeDistanceList(
+        self.movement = kinematics.time_distance_list(
             KEY_WIDTH, MAX_ACCELERATION, MAX_VELOCITY, abs(distance)
         )
 
@@ -287,7 +288,7 @@ class FrameList:
 
             current_command = command_list.in_order_commands.pop(0)
 
-            if current_command.command_type == "d":
+            if current_command.command_type == CommandType.DEPLOY:
                 self.piano_state.actuate(
                     current_command.solenoid_locations, next_command_time
                 )
@@ -300,7 +301,7 @@ class FrameList:
                 self.audio_frames[-1].set_frame_velocity(current_command.force)
                 self.__capture_frame()
 
-            elif current_command.command_type == "h":
+            elif current_command.command_type == CommandType.MOVE:
                 distance_in_keys = (
                     current_command.position / KEY_WIDTH
                 ) - self.piano_state.current_position

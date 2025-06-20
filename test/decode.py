@@ -1,3 +1,6 @@
+from enum import Enum
+from dataclasses import dataclass
+
 BASE18 = (
     "0",
     "1",
@@ -20,21 +23,73 @@ BASE18 = (
 )
 
 
-START_COMMENT = 0
-MOVE_COMMAND = 1
-DEPLOY_COMMAND = 2
-END_COMMAND = 3
+class CommandType(Enum):
+    """
+    Represents the command type.
+    """
+
+    START = 0
+    MOVE = 1
+    DEPLOY = 2
+    END = 3
+
+
+class Hand(Enum):
+    """
+    Represents the hand for the command.
+    """
+
+    RIGHT = 0
+    LEFT = 1
+
+
+def find_command_type(command_str: str) -> CommandType:
+    result: CommandType
+    match command_str:
+        case "s":
+            result = CommandType.START
+        case "h":
+            result = CommandType.MOVE
+        case "d":
+            result = CommandType.DEPLOY
+        case "e":
+            result = CommandType.END
+        case _:
+            raise ValueError("Command string entered was invalid.")
+
+    return result
+
+
+@dataclass
+class MoveCommand:
+    type: CommandType
+    hand: Hand
+    position: int
+    trigger: int
+    duration: int
+
+
+@dataclass
+class DeployCommand:
+    type: CommandType
+    hand: Hand
+    chord: str  # Make a data type
+    force: int
+    trigger: int
+    duration: int
+
+    pass
 
 
 class Command:
     def __init__(self, command_str: str) -> None:
         self.command_str = command_str
 
-        self.command_type = command_str[0]
+        self.command_type = find_command_type(command_str[0])
 
-        if self.command_type == "h":
+        if self.command_type == CommandType.MOVE:
             self.process_move_command()
-        if self.command_type == "d":
+        if self.command_type == CommandType.DEPLOY:
             self.process_play_command()
 
     def process_move_command(self) -> None:
@@ -83,10 +138,10 @@ class CommandList:
         for com in self.file_commands:
             processed_command = Command(com)
 
-            if processed_command.command_type == "d":
+            if processed_command.command_type == CommandType.DEPLOY:
                 self.play_commands.append(processed_command)
 
-            elif processed_command.command_type == "h":
+            elif processed_command.command_type == CommandType.MOVE:
                 self.move_commands.append(processed_command)
 
     def convert_duration(self) -> None:
