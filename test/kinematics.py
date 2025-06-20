@@ -92,7 +92,7 @@ def time_distance_function(
     constant velocity then constant velocity never occurs for the travel path."""
     if (2 * vel_distance) > total_dist:
         halfDistance = total_dist / 2
-        timeOffset = math.sqrt((2 * halfDistance) / accel)
+        timeOffset = Decimal(math.sqrt((2 * halfDistance) / accel))
 
         if dist < halfDistance:
             timePoint = accel_time(dist, accel)

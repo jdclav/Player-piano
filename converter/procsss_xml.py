@@ -378,6 +378,9 @@ class MusicPiece:
 
         return divisions
 
+    def voice_sort(self) -> list:
+        """TODO"""
+
 
 if __name__ == "__main__":
     import os
