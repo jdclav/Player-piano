@@ -138,10 +138,10 @@ class CommandList:
         for com in self.file_commands:
             processed_command = Command(com)
 
-            if processed_command.command_type == "d":
+            if processed_command.command_type == CommandType.DEPLOY:
                 self.play_commands.append(processed_command)
 
-            elif processed_command.command_type == "h":
+            elif processed_command.command_type == CommandType.MOVE:
                 self.move_commands.append(processed_command)
 
     def convert_duration(self) -> None:

@@ -13,7 +13,7 @@ def accel_time(dist: Decimal, accel: Decimal) -> Decimal:
     dist with the given accel.
     """
 
-    under_root = (2 * dist) / accel
+    under_root = Decimal((2 * dist) / accel)
     result_time = under_root.sqrt()
 
     return result_time
@@ -50,7 +50,7 @@ def deceleration_time(dist: Decimal, vel: Decimal, accel: Decimal) -> Decimal:
 
     under_abs = (vel**2) - (2 * accel * (dist))
     under_root = abs(under_abs)
-    squareRoot = under_root.sqrt(under_root)
+    squareRoot = under_root.sqrt()
     result_time = (vel - squareRoot) / accel
 
     return result_time
@@ -80,7 +80,7 @@ def time_distance_function(
     """
     vel_time = vel / accel
 
-    vel_distance = 0.5 * accel * (vel_time**2)
+    vel_distance = Decimal(0.5) * accel * (vel_time**2)
 
     timePoint = 0
 
@@ -145,7 +145,9 @@ def time_distance_list(
 
     for i in range(int(num_intervals) + 1):
         positions.append(
-            time_distance_function(i, adjusted_accel, adjusted_vel, num_intervals)
+            time_distance_function(
+                i, adjusted_accel, adjusted_vel, Decimal(num_intervals)
+            )
         )
 
     return positions

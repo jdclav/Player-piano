@@ -77,6 +77,11 @@ class NoteList:
 
             sample_len = len(item.waveform) + item.start_sample
 
+            remaining_samples = len(full_samples) - sample_len
+
+            if remaining_samples < 0:
+                item.waveform = item.waveform[0:(remaining_samples)]
+
             full_samples[item.start_sample : sample_len] += item.waveform
 
         full_samples *= 32767 / np.max(np.abs(full_samples))
