@@ -342,7 +342,9 @@ class MusicPiece:
 
         return temp_list
 
-    def tick_tag_notes(self, score_part: ScorePart, staff: int) -> list[TaggedNote]:
+    def tick_tag_notes(
+        self, score_part: ScorePart, voice_list: list[str]
+    ) -> list[TaggedNote]:
         tagged_note_list: list[TaggedNote] = []
 
         part_index = 0
@@ -355,7 +357,7 @@ class MusicPiece:
 
         for item in tagged_part:
             if isinstance(item[0], Note):
-                if item[0].staff == staff:
+                if item[0].voice in voice_list:
                     tagged_note = TaggedNote(item[0], item[1])
                     tagged_note_list.append(tagged_note)
 
@@ -378,8 +380,41 @@ class MusicPiece:
 
         return divisions
 
-    def voice_sort(self) -> list:
+    def find_staves(self, score_part: ScorePart) -> int:
         """TODO"""
+
+        staff_count: list[int] = []
+
+        for i, part in enumerate(self.parts):
+            if part.id == score_part.id:
+                part_index = i
+
+        tagged_part = self.tagged_parts[part_index]
+
+        for item in tagged_part:
+            if isinstance(item[0], Note):
+                if item[0].staff not in staff_count:
+                    staff_count.append(item[0].staff)
+
+        return len(staff_count)
+
+    def find_voices(self, score_part: ScorePart) -> list[str]:
+        """TODO"""
+
+        voice_list: list[str] = []
+
+        for i, part in enumerate(self.parts):
+            if part.id == score_part.id:
+                part_index = i
+
+        tagged_part = self.tagged_parts[part_index]
+
+        for item in tagged_part:
+            if isinstance(item[0], Note):
+                if item[0].voice not in voice_list:
+                    voice_list.append(item[0].voice)
+
+        return voice_list
 
 
 if __name__ == "__main__":

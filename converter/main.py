@@ -25,7 +25,13 @@ processed_xml = MusicPiece(xml_file)
 
 score_part = processed_xml.parts_list[0]
 
-note_list = StillNotesList(key_map, processed_xml, score_part, 1)
+# voices = processed_xml.find_voices(score_part)
+
+# staff_count = processed_xml.find_staves(score_part)
+
+# voices_groups =
+
+note_list = StillNotesList(key_map, processed_xml, score_part, ["1", "2", "3", "4"])
 
 note_list.find_groups()
 note_list.find_clusters()

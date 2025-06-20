@@ -501,7 +501,7 @@ class StillNotesList:
         key_map: SolenoidIndex,
         processed_xml: MusicPiece,
         score_part: ScorePart,
-        staff: int,
+        voice_list: int,
     ) -> None:
         """
         Takes in a XMLNoteList object and converts it to a list of StillNotess. StillNotess combine same time notes
@@ -525,7 +525,7 @@ class StillNotesList:
 
         self.divisions = processed_xml.part_divisions(score_part)
 
-        xml_notes = processed_xml.tick_tag_notes(score_part, staff)
+        xml_notes = processed_xml.tick_tag_notes(score_part, voice_list)
 
         dynamic_list = processed_xml.find_dynamic_list(score_part)
         tempo_list = processed_xml.tempo_list
