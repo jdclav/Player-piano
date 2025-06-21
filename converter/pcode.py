@@ -21,7 +21,7 @@ Time should be changed from relative us between each command to an absolute time
 RETRACT_TIME = 50000
 KEY_WIDTH = 23.2
 START_DELAY = 5000
-KEYWIDTH = 23.2
+KEY_WIDTH = 23.2
 
 
 def check_chord(unique_notes: list[UniqueNote]) -> list[list[UniqueNote]]:
@@ -29,7 +29,6 @@ def check_chord(unique_notes: list[UniqueNote]) -> list[list[UniqueNote]]:
     chord_list: list[list[int]] = []
 
     for i, note in enumerate(unique_notes):
-
         if i == 0:
             chord_list.append([note])
             prev_note = note
@@ -105,7 +104,7 @@ class PlayCommand:
         self.pcode: str = ""
         """TODO"""
 
-    def set_hand_paramter(self) -> None:
+    def set_hand_parameter(self) -> None:
         """
         Convert the hand value to the pcode representation.
         """
@@ -113,7 +112,7 @@ class PlayCommand:
 
     def set_digit_parameter(self, key_map: SolenoidIndex) -> None:
         """
-        Convert the pitch(es) from the stored note to the pcode representation for a given key_map and postion.
+        Convert the pitch(es) from the stored note to the pcode representation for a given key_map and position.
 
         param key_map: A SolenoidIndex object that relates pitch, position, and solenoid.
         param position: An integer value for the position in terms of piano keys.
@@ -131,7 +130,7 @@ class PlayCommand:
         for _ in range(i, 4):
             self.digit_parameter += str(base[-1])
 
-    def set_velocity_paramter(self) -> None:
+    def set_velocity_parameter(self) -> None:
         """TODO"""
         self.velocity_parameter = self.velocity
 
@@ -154,9 +153,9 @@ class PlayCommand:
 
     def generate_pcode(self, key_map: SolenoidIndex) -> None:
         """TODO"""
-        self.set_hand_paramter()
+        self.set_hand_parameter()
         self.set_digit_parameter(key_map)
-        self.set_velocity_paramter()
+        self.set_velocity_parameter()
         self.set_time_parameter()
         self.set_duration_parameter()
         self.pcode += "d"
@@ -223,7 +222,7 @@ class MoveCommand:
         self.pcode: str = ""
         """TODO"""
 
-    def set_hand_paramter(self) -> None:
+    def set_hand_parameter(self) -> None:
         """
         Convert the hand value to the pcode representation.
         """
@@ -274,7 +273,7 @@ class MoveCommand:
         retract_time: float,
     ) -> None:
         """TODO"""
-        self.set_hand_paramter()
+        self.set_hand_parameter()
         self.set_position_parameter(key_width)
 
         if self.note.note_start == self.next_note.note_start:
@@ -312,7 +311,6 @@ class PlayList:
         previous_time: float = 0
         time_loss = Decimal(0)
         for still_note in self.note_list.playable_list:
-
             chord_list = check_chord(still_note.unique_notes)
 
             for i, chord in enumerate(chord_list):
@@ -414,7 +412,7 @@ if __name__ == "__main__":
 
     note_list.find_groups()
     note_list.find_clusters()
-    note_list.find_moves(KEYWIDTH, constants.max_acceleration, constants.max_velocity)
+    note_list.find_moves(KEY_WIDTH, constants.max_acceleration, constants.max_velocity)
     note_list.find_locations()
     note_list.find_time_losses()
 

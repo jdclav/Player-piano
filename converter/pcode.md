@@ -53,3 +53,22 @@ This command signals that a hand will be moved to a position.
 - t : The absolute time from time zero this command should take place in microseconds as a 64 bit integer.
 - l : The longevity of the command. This will be how long a move should take in totality from the start of the command to the end of motion in microseconds as a 64 bit integer.
 
+## Pedal Command
+
+# Description
+
+This command signals that a pedal will be depressed.
+
+# Breakdown
+
+TBD
+
+## Repeat Command
+
+# Description
+
+This command points to a command and jumps to that command. It also specifies how many times to repeat or if it should wait for a external stop trigger.
+
+# Breakdown
+
+TBD
