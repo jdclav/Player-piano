@@ -16,8 +16,8 @@ constants = Constants()
 key_map = SolenoidIndex(88, constants.first_88_key)
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
-file_name = "moonlight.musicxml"
-# file_name = "test.musicxml"
+# file_name = "moonlight.musicxml"
+file_name = "test.musicxml"
 
 xml_file = f"{current_directory}/{file_name}"
 

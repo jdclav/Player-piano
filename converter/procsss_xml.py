@@ -356,8 +356,9 @@ class MusicPiece:
         for item in tagged_part:
             if isinstance(item[0], Note):
                 if item[0].staff == staff:
-                    tagged_note = TaggedNote(item[0], item[1])
-                    tagged_note_list.append(tagged_note)
+                    if not item[0].grace:
+                        tagged_note = TaggedNote(item[0], item[1])
+                        tagged_note_list.append(tagged_note)
 
         return tagged_note_list
 

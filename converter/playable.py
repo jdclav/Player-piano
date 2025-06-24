@@ -563,6 +563,8 @@ class StillNotesList:
                     note_duration = xml_note_time(
                         tagged_note, tempo_list, self.divisions
                     )
+                    if note_duration == 0:
+                        pass
                     previous_playable.add_note(
                         midi_pitch,
                         current_us_time - previous_duration,
@@ -575,7 +577,8 @@ class StillNotesList:
                     note_duration = xml_note_time(
                         tagged_note, tempo_list, self.divisions
                     )
-
+                    if note_duration == 0:
+                        pass
                     temp_playable = StillNotes(
                         self.key_map,
                         current_us_time,
@@ -629,6 +632,9 @@ class StillNotesList:
 
     def find_moves(self, key_width: float, acceleration: int, velocity: int) -> None:
         for i, cluster in enumerate(self.group_list.cluster_list):
+            print(i)
+            if i == 9:
+                pass
             cluster.set_cluster_list()
             cluster.find_optimal_moves(key_width, acceleration, velocity)
         self.combine_cluster_moves()
@@ -778,7 +784,8 @@ class PlayableGroup:
 
         param distance: An integer representing distance needed to travel to this group from the last group.
         """
-        self.need_points.insert(0, [0, distance])
+        if distance != 0:
+            self.need_points.insert(0, [0, distance])
 
     def last_freed_point(self, distance: int) -> None:
         """TODO Does nothing useful atm.
@@ -1235,6 +1242,7 @@ class PlayableGroupCluster:
         """Find all the freed moves for this cluster and store then in a single list for each note."""
         index_offset: int = 0
         total_moves: int = 0
+        list_offset: int = 0
 
         for i, group in enumerate(self.cluster):
             if i != len(self.cluster) - 1:
@@ -1242,7 +1250,7 @@ class PlayableGroupCluster:
                 freed_item = freed_list.pop(0)
 
                 for j in range(0, len(group.playable_group)):
-                    if j == freed_item[0]:
+                    if j + list_offset == freed_item[0]:
                         total_moves += freed_item[1]
                         if len(freed_list) > 0:
                             freed_item = freed_list.pop(0)
@@ -1252,7 +1260,8 @@ class PlayableGroupCluster:
                 extra_freed = [self.cluster_freed[-1]] * len(
                     self.cluster[-1].playable_group
                 )
-                self.cluster_freed += extra_freed
+                # self.cluster_freed += extra_freed
+                # list_offset = len(extra_freed)
 
             index_offset += len(group.playable_group)
 
