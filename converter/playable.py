@@ -24,10 +24,10 @@ INSIDE_LOCATION = 0
 
 
 KEYWIDTH = 23.2
-actuationTime = 1000
+actuationTime = 0
 Inital_duration = 5000
-maxSpeed = 6000
-maxAccel = 60000
+maxSpeed = 60000
+maxAccel = 600000
 
 US_PER_MINUTE = 1e6 * 60
 
@@ -247,6 +247,7 @@ class StillNotes:
         midi_pitch: int,
         velocity: int,
         start_tick: Decimal,
+        seq_id: int,
     ) -> None:
         """
         Holds all the information for a single playable set of notes. This could be a single key or a chord.
@@ -293,6 +294,8 @@ class StillNotes:
         """TODO"""
 
         self.time_loss: float = 0.0
+
+        self.seq_id = seq_id
 
     def add_note(
         self,
@@ -356,7 +359,7 @@ class StillNotes:
         distance: int,
         key_width: float,
         acceleration: float,
-        velociy: float,
+        velocity: float,
     ) -> float:
         """
         Takes in a distance to be traveled after the note is played and returns a score based on how much it affects
@@ -371,7 +374,7 @@ class StillNotes:
         """
         distance_mm = distance * key_width
         score_time = (
-            travel_time(distance_mm, acceleration, velociy) + actuationTime
+            travel_time(distance_mm, acceleration, velocity) + actuationTime
         )  # TODO This needs to not be a file constant. This should be a config value.
         spare_time = self.next_delay - self.duration
         if score_time >= spare_time:
@@ -395,14 +398,14 @@ class StillNotes:
         distance: int,
         key_width: float,
         acceleration: float,
-        velociy: float,
+        velocity: float,
     ):
         """
         TODO
         """
         distance_mm = distance * key_width
         lost_time = (
-            travel_time(distance_mm, acceleration, velociy) + actuationTime
+            travel_time(distance_mm, acceleration, velocity) + actuationTime
         )  # TODO This should be a config value not a file constant.
         self.set_time_loss(lost_time)
 
@@ -539,12 +542,14 @@ class StillNotesList:
         dynamic_list: DynamicList,
     ) -> None:
         """
-        Processes the note_list into a list of StillNotess.
+        Processes the note_list into a list of StillNotes.
 
         param note_list: A XMLNoteList object containing each note for a particular staff of a musicxml part.
         """
         current_us_time = Decimal(0)
         previous_duration = Decimal(0)
+
+        seq_id = 0
 
         processed_notes: list[TaggedNote] = []
 
@@ -586,7 +591,9 @@ class StillNotesList:
                         midi_pitch,
                         velocity,
                         tagged_note.tick,
+                        seq_id,
                     )
+                    seq_id += 1
                     current_us_time += note_duration
                     self.playable_list[-1].set_delay(temp_playable.note_start)
                     self.playable_list.append(temp_playable)
@@ -604,7 +611,9 @@ class StillNotesList:
                     midi_pitch,
                     velocity,
                     tagged_note.tick,
+                    seq_id,
                 )
+                seq_id += 1
                 current_us_time += note_duration
                 self.playable_list.append(temp_playable)
                 previous_duration = note_duration
@@ -1079,7 +1088,7 @@ class PlayableGroupList:
         Once Clusters have been found they should be processed to determine values needed by the clusters to
         find the optimal moves.
         """
-        for cluster in self.cluster_list:
+        for i, cluster in enumerate(self.cluster_list):
             cluster.absolutes()
         for group in self.group_list:
             group.find_need_points()
@@ -1148,8 +1157,8 @@ class PlayableGroupCluster:
 
     def find_absolute_need(
         self,
-        current_direction: int,
-        previous_width: int,
+        current_directions: list[Direction],
+        previous_directions: list[Direction],
         current_locations: set[int],
         previous_locations: set[int],
     ) -> int:
@@ -1163,18 +1172,25 @@ class PlayableGroupCluster:
 
         return: Returns and integer value as a distance of keys.
         """
-        if current_direction == Direction.LEFT:
+        if previous_directions[0] == previous_directions[1]:
+            previous_width = 0
+        else:
+            previous_width = len(previous_locations) - 1
+
+        if current_directions[0] == Direction.LEFT:
             distance = min(current_locations) - max(previous_locations)
-        elif current_direction == Direction.RIGHT:
+            width_adjustment = previous_width
+        elif current_directions[0] == Direction.RIGHT:
             distance = max(current_locations) - min(previous_locations)
+            width_adjustment = -1 * previous_width
         else:
             raise ValueError("All groups by here should have directions assigned.")
 
-        return distance + previous_width
+        return distance + width_adjustment
 
     def find_absolute_freed(
         self,
-        current_direction: int,
+        current_directions: list[Direction],
         current_locations: set[int],
         previous_locations: set[int],
     ) -> int:
@@ -1186,9 +1202,9 @@ class PlayableGroupCluster:
 
         return: Returns and integer value as a distance of keys.
         """
-        if current_direction == Direction.LEFT:
+        if current_directions[0] == Direction.LEFT:
             distance = min(current_locations) - min(previous_locations)
-        elif current_direction == Direction.RIGHT:
+        elif current_directions[0] == Direction.RIGHT:
             distance = max(current_locations) - max(previous_locations)
         else:
             raise ValueError("All groups by here should have directions assigned.")
@@ -1201,27 +1217,26 @@ class PlayableGroupCluster:
         """
         previous_group: PlayableGroup = PlayableGroup()
         groups = self.cluster
-        previous_width = 0
 
         for i in range(0, len(groups)):
+            current_locations = groups[i].possible_locations
             if i != 0:
-                current_locations = groups[i].possible_locations
                 previous_locations = previous_group.possible_locations
-                current_group_direction = groups[i].movement_directions[0]
+                previous_group_directions = previous_group.movement_directions
+                current_group_directions = groups[i].movement_directions
 
                 need_distance = self.find_absolute_need(
-                    current_group_direction,
-                    previous_width,
+                    current_group_directions,
+                    previous_group_directions,
                     current_locations,
                     previous_locations,
                 )
                 freed_distance = self.find_absolute_freed(
-                    current_group_direction, current_locations, previous_locations
+                    current_group_directions, current_locations, previous_locations
                 )
 
                 groups[i].set_absolute_need(need_distance)
                 previous_group.set_absolute_freed(freed_distance)
-                # previous_width = len(current_locations)
 
             previous_group = groups[i]
 

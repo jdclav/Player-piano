@@ -29,7 +29,6 @@ def check_chord(unique_notes: list[UniqueNote]) -> list[list[UniqueNote]]:
     chord_list: list[list[int]] = []
 
     for i, note in enumerate(unique_notes):
-
         if i == 0:
             chord_list.append([note])
             prev_note = note
@@ -311,12 +310,11 @@ class PlayList:
     def generate_play_list(self, hand: Hand) -> None:
         previous_time: float = 0
         time_loss = Decimal(0)
-        for still_note in self.note_list.playable_list:
-
+        for i, still_note in enumerate(self.note_list.playable_list):
             chord_list = check_chord(still_note.unique_notes)
 
-            for i, chord in enumerate(chord_list):
-                if i == len(chord_list) - 1:
+            for j, chord in enumerate(chord_list):
+                if j == len(chord_list) - 1:
                     time_loss = still_note.time_loss
                 else:
                     time_loss = Decimal(0)

@@ -19,6 +19,6 @@ standardkeylayout:
 
 # Do not edit these. They represent the limits of the hardware.
 kinematics:
-  maxvelocity: 6000
-  maxacceleration: 60000
+  maxvelocity: 60000
+  maxacceleration: 600000
 
